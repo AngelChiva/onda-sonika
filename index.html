@@ -139,10 +139,10 @@ np();setInterval(np,20000);
 
 // Parrilla (hora de España)
 const P=[
- {n:"Lo de siempre + éxitos",d:"Lunes a viernes",h:"8:00 – 24:00",t:(w,h)=>w>=1&&w<=5&&h>=8},
- {n:"Fiesta",d:"Viernes, sábado, domingo y vísperas",h:"17:00 – 2:00",t:(w,h)=>(([5,6,0].includes(w)&&h>=17)||([6,0,1].includes(w)&&h<2))},
- {n:"Lo de siempre + éxitos",d:"Fines de semana",h:"8:00 – 17:00",t:(w,h)=>(w==6||w==0)&&h>=8&&h<17},
- {n:"Baladas para descansar",d:"Todas las noches",h:"0:00 – 8:00",t:(w,h)=>h<8}
+ {n:"Sonika Non Stop",d:"Lunes a viernes",h:"8:00 – 24:00",t:(w,h)=>w>=1&&w<=5&&h>=8},
+ {n:"La Fiesta Sonika",d:"Viernes, sábado, domingo y vísperas",h:"17:00 – 2:00",t:(w,h)=>(([5,6,0].includes(w)&&h>=17)||([6,0,1].includes(w)&&h<2))},
+ {n:"Finde Sonika",d:"Fines de semana",h:"8:00 – 17:00",t:(w,h)=>(w==6||w==0)&&h>=8&&h<17},
+ {n:"Sonika Nocturna",d:"Todas las noches",h:"0:00 – 8:00",t:(w,h)=>h<8}
 ];
 function draw(){const n=new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Madrid"}));const w=n.getDay(),h=n.getHours();
  const pr=[1,0,2,3].find(i=>P[i].t(w,h));document.getElementById("parrilla").innerHTML=P.map((p,i)=>{const now=i===pr;
