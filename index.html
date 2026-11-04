@@ -135,8 +135,9 @@ document.getElementById("vol").oninput=e=>a.volume=e.target.value;a.volume=.9;
 
 async function np(){try{const r=await fetch(NP,{cache:"no-store"});if(!r.ok)return;const d=await r.json();const s=d.now_playing&&d.now_playing.song;
  if(s){document.getElementById("song").textContent=s.title||"ONDA SONIKA";document.getElementById("artist").textContent=s.artist||"";
-  if("mediaSession" in navigator)navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,album:"ONDA SONIKA"});}}catch(e){}}
+  if("mediaSession" in navigator){const L=location.origin+"/logo.jpg";navigator.mediaSession.metadata=new MediaMetadata({title:s.title||"ONDA SONIKA",artist:(s.artist||"")+" · ONDA SONIKA",album:"ONDA SONIKA",artwork:[{src:L,sizes:"512x512",type:"image/jpeg"}]});}}}catch(e){}}
 np();setInterval(np,20000);
+if("mediaSession" in navigator){try{navigator.mediaSession.setActionHandler("play",()=>{if(!on)btn.click()});navigator.mediaSession.setActionHandler("pause",()=>{if(on)btn.click()});navigator.mediaSession.setActionHandler("stop",()=>{if(on)btn.click()});}catch(e){}}
 
 // Parrilla (hora de España)
 const P=[
