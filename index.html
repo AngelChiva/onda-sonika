@@ -131,7 +131,9 @@ btn.onclick=()=>{
 };
 a.onerror=()=>{if(on){est.textContent="EN PRUEBAS · VUELVE PRONTO";set(false,true)}};
 function set(v,keep){on=v;ico.innerHTML=v?PAUSE:PLAY;btn.classList.toggle("on",v);pl.classList.toggle("on-air",v);if(v)est.textContent="EN DIRECTO";else if(!keep)est.textContent="DALE AL PLAY"}
-document.getElementById("vol").oninput=e=>a.volume=e.target.value;a.volume=.9;
+document.getElementById("vol").oninput=e=>a.volume=e.target.value;
+(function(){const t=new Audio();t.volume=0.5;const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+ if(ios||t.volume!==0.5){const v=document.querySelector(".vol");if(v)v.outerHTML='<div class="vol" style="font-size:13px;opacity:.75">🔊 Sube o baja el volumen con los botones del móvil</div>';}else a.volume=.9;})();
 
 async function np(){try{const r=await fetch(NP,{cache:"no-store"});if(!r.ok)return;const d=await r.json();const s=d.now_playing&&d.now_playing.song;
  if(s){document.getElementById("song").textContent=s.title||"ONDA SONIKA";document.getElementById("artist").textContent=s.artist||"";
