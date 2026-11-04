@@ -36,7 +36,8 @@ h2{font-size:13px;letter-spacing:.16em;color:var(--mut);margin:30px 0 12px;font-
 .grid{display:grid;gap:10px}
 .slot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;gap:12px;align-items:center}
 .slot b{display:block;font-size:16px}
-.slot span{color:var(--mut);font-size:13px}
+.slot span{color:var(--mut);font-size:13px;display:block}
+.slot em{font-style:normal;color:var(--or2);font-size:13px;display:block;margin-top:4px}
 .slot.now{border-color:var(--or);background:linear-gradient(90deg,rgba(255,122,26,.14),var(--panel))}
 .tag{font-size:11px;font-weight:700;letter-spacing:.1em;color:#111;background:var(--or2);padding:4px 8px;border-radius:99px;white-space:nowrap}
 .wa{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -139,14 +140,14 @@ np();setInterval(np,20000);
 
 // Parrilla (hora de España)
 const P=[
- {n:"Sonika Non Stop",d:"Lunes a viernes",h:"8:00 – 24:00",t:(w,h)=>w>=1&&w<=5&&h>=8},
- {n:"La Fiesta Sonika",d:"Viernes, sábado, domingo y vísperas",h:"17:00 – 2:00",t:(w,h)=>(([5,6,0].includes(w)&&h>=17)||([6,0,1].includes(w)&&h<2))},
- {n:"Finde Sonika",d:"Fines de semana",h:"8:00 – 17:00",t:(w,h)=>(w==6||w==0)&&h>=8&&h<17},
- {n:"Sonika Nocturna",d:"Todas las noches",h:"0:00 – 8:00",t:(w,h)=>h<8}
+ {n:"Sonika Non Stop",m:"Éxitos latinos, urbano y lo más viral del momento",d:"Lunes a viernes",h:"8:00 – 24:00",t:(w,h)=>w>=1&&w<=5&&h>=8},
+ {n:"La Fiesta Sonika",m:"Dance de los 90 y 2000 y flamenco house para darlo todo",d:"Viernes, sábado, domingo y vísperas",h:"17:00 – 2:00",t:(w,h)=>(([5,6,0].includes(w)&&h>=17)||([6,0,1].includes(w)&&h<2))},
+ {n:"Finde Sonika",m:"Éxitos latinos y urbanos para tu fin de semana",d:"Fines de semana",h:"8:00 – 17:00",t:(w,h)=>(w==6||w==0)&&h>=8&&h<17},
+ {n:"Sonika Nocturna",m:"Baladas en español para terminar el día",d:"Todas las noches",h:"0:00 – 8:00",t:(w,h)=>h<8}
 ];
 function draw(){const n=new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Madrid"}));const w=n.getDay(),h=n.getHours();
  const pr=[1,0,2,3].find(i=>P[i].t(w,h));document.getElementById("parrilla").innerHTML=P.map((p,i)=>{const now=i===pr;
- return `<div class="slot${now?" now":""}"><div><b>${p.n}</b><span>${p.d} · ${p.h}</span></div>${now?'<i class="tag">AHORA</i>':""}</div>`}).join("")}
+ return `<div class="slot${now?" now":""}"><div><b>${p.n}</b><span>${p.d} · ${p.h}</span><em>${p.m}</em></div>${now?'<i class="tag">AHORA</i>':""}</div>`}).join("")}
 draw();setInterval(draw,60000);
 </script>
 </body>
