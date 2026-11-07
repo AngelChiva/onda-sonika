@@ -96,6 +96,7 @@ audio{width:100%;margin-top:12px}
   <section class="step off" id="s4">
     <div class="num">PASO 4</div><h2>Retoca tu voz</h2>
     <div class="filters">
+      <button class="f sel" data-f="breath"><b>😮‍💨 Quitar respiraciones</b><span>Quita el aire al coger aliento</span></button>
       <button class="f" data-f="clean"><b>✨ Limpiar voz</b><span>Quita ruido de fondo</span></button>
       <button class="f" data-f="radio"><b>📻 Voz de radio</b><span>Como un locutor</span></button>
       <button class="f" data-f="echo"><b>🏟️ Eco de estudio</b><span>Reverberación suave</span></button>
@@ -164,7 +165,7 @@ const MOTIVO_TXT = {cumple:"Cumpleaños",aniversario:"Aniversario",amor:"Amor"};
 /* ========================== */
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const S={motivo:null,cancion:null,own:false,voice:null,tuned:null,filters:new Set(),pitch:0,bal:0,franja:null,mix:null,code:null};
+const S={motivo:null,cancion:null,own:false,voice:null,tuned:null,filters:new Set(['breath']),pitch:0,bal:0,franja:null,mix:null,code:null};
 let AC; const ac=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 const unlock=n=>$('#s'+n).classList.remove('off');
 const pick=(btns,b)=>{btns.forEach(x=>x.classList.toggle('sel',x===b))};
@@ -229,6 +230,20 @@ $('#listen').onclick=async()=>{if(!S.voice)return;$('#busy').hidden=false;
 const SR=44100;
 function mono(b){const d=new Float32Array(b.length);for(let c=0;c<b.numberOfChannels;c++){const x=b.getChannelData(c);for(let i=0;i<d.length;i++)d[i]+=x[i]/b.numberOfChannels;}return d;}
 function resample(d,from,to){if(from===to)return d;const n=Math.round(d.length*to/from),o=new Float32Array(n),r=from/to;for(let i=0;i<n;i++){const p=i*r,k=Math.floor(p),f=p-k;o[i]=(d[k]||0)*(1-f)+(d[k+1]||0)*f;}return o;}
+/* Quitar respiraciones: tramos sin tono (no voz), de energía media-baja y de más de 120 ms → se bajan al 10 % */
+function deBreath(d){const N=Math.round(SR*.02),fr=Math.floor(d.length/N),rms=new Float32Array(fr),vo=new Uint8Array(fr);
+  for(let k=0;k<fr;k++){const o=k*N;let s=0;for(let i=0;i<N;i++){const x=d[o+i];s+=x*x;}rms[k]=Math.sqrt(s/N);
+    // ¿tiene tono? autocorrelación normalizada entre 70 y 500 Hz
+    let best=0;const e0=s+1e-9;for(let lag=Math.floor(SR/500);lag<=Math.floor(SR/70);lag+=2){let c=0,e1=0;for(let i=0;i<N;i++){const a=d[o+i],b=d[o+i+lag]||0;c+=a*b;e1+=b*b;}const r=c/Math.sqrt(e0*(e1+1e-9));if(r>best)best=r;}
+    vo[k]=best>.55?1:0;}
+  const sp=[...rms].filter((_,k)=>vo[k]).sort((a,b)=>a-b),speech=sp.length?sp[Math.floor(sp.length*.5)]:0;if(!speech)return d;
+  const lo=[...rms].sort((a,b)=>a-b)[Math.floor(fr*.05)]||0;
+  const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*.45&&rms[k]>lo*1.6)?1:0;
+  const g=new Float32Array(fr).fill(1);
+  for(let k=0;k<fr;){if(!cand[k]){k++;continue;}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=120)for(let q=k;q<j;q++)g[q]=.1;k=j;}
+  // ganancia suave muestra a muestra
+  let cur=1;for(let k=0;k<fr;k++){const t=g[k];for(let i=0;i<N;i++){cur+=(t-cur)*.004;d[k*N+i]*=cur;}}
+  return d;}
 function gate(d){const N=1024,fr=Math.floor(d.length/N),rms=[];for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v;}rms.push(Math.sqrt(s/N));}
   const sorted=[...rms].sort((a,b)=>a-b),floor=sorted[Math.floor(sorted.length*.1)]||0,th=floor*3+1e-4;let g=1;
   for(let k=0;k<fr;k++){const tgt=rms[k]>th?1:.12;for(let i=0;i<N;i++){g+= (tgt-g)*(tgt>g?.02:.0015);d[k*N+i]*=g;}}return d;}
@@ -246,6 +261,7 @@ async function build(){
   const src=(S.filters.has('tune')&&S.tuned)?S.tuned:S.voice;
   let v=resample(mono(src),src.sampleRate,SR);
   // recortar silencios de inicio/fin
+  if(S.filters.has('breath'))v=deBreath(v);
   let a=0,b=v.length-1;while(a<b&&Math.abs(v[a])<.01)a++;while(b>a&&Math.abs(v[b])<.01)b--;v=v.slice(Math.max(0,a-SR*.15),Math.min(v.length,b+SR*.3));
   if(S.filters.has('clean'))v=gate(v);
   v=pitchShift(v,S.pitch);
