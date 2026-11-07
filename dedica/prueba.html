@@ -59,6 +59,7 @@ audio{width:100%;margin-top:12px}
 .busy{font-size:13px;color:var(--or2);margin-top:8px}
 .done{display:none;text-align:center}
 .done .code{font-size:32px;font-weight:900;letter-spacing:.12em;color:var(--or2);margin:10px 0}
+.pitch[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -102,6 +103,9 @@ audio{width:100%;margin-top:12px}
       <div class="pitch"><div class="row"><b style="font-size:14px">🎚️ Tono de voz</b><span id="pv">Normal</span></div>
         <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
         <div class="row"><span>Más grave</span><span>Más agudo</span></div></div>
+      <div class="pitch" id="balBox"><div class="row"><b style="font-size:14px">🔊 Voz o música</b><span id="bv">Equilibrado</span></div>
+        <input type="range" id="bal" min="-5" max="5" step="1" value="0">
+        <div class="row"><span>Más música</span><span>Más voz</span></div></div>
     </div>
     <button class="btn2" id="listen">▶ Escuchar cómo queda</button>
     <div class="busy" id="busy" hidden>Preparando tu audio…</div>
@@ -157,7 +161,7 @@ const MOTIVO_TXT = {cumple:"Cumpleaños",aniversario:"Aniversario",amor:"Amor"};
 /* ========================== */
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const S={motivo:null,cancion:null,own:false,voice:null,filters:new Set(),pitch:0,franja:null,mix:null,code:null};
+const S={motivo:null,cancion:null,own:false,voice:null,filters:new Set(),pitch:0,bal:0,franja:null,mix:null,code:null};
 let AC; const ac=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 const unlock=n=>$('#s'+n).classList.remove('off');
 const pick=(btns,b)=>{btns.forEach(x=>x.classList.toggle('sel',x===b))};
@@ -172,8 +176,8 @@ function renderSongs(){
    `<button class="opt wide" data-i="own"><span>🎧 Sin canción de fondo</span><small>grabo con mi música</small></button>`;
   S.cancion=null;S.own=false;
   $$('#canciones .opt').forEach(b=>b.onclick=()=>{pick($$('#canciones .opt'),b);const p=$('#songPrev');
-    if(b.dataset.i==='own'){S.own=true;S.cancion=null;p.pause();p.hidden=true;$('#recHint').textContent='Pon tu música de fondo (en otro aparato) y graba encima. Máximo 45 segundos.';}
-    else{S.own=false;S.cancion=list[+b.dataset.i];p.src=S.cancion.f;p.hidden=false;p.play().catch(()=>{});$('#recHint').textContent='Máximo 45 segundos. Habla cerca del móvil.';}
+    if(b.dataset.i==='own'){S.own=true;S.cancion=null;p.pause();p.hidden=true;$('#balBox').hidden=true;$('#recHint').textContent='Pon tu música de fondo (en otro aparato) y graba encima. Máximo 45 segundos.';}
+    else{S.own=false;S.cancion=list[+b.dataset.i];$('#balBox').hidden=false;p.src=S.cancion.f;p.hidden=false;p.play().catch(()=>{});$('#recHint').textContent='Máximo 45 segundos. Habla cerca del móvil.';}
     S.mix=null;unlock(3);});
 }
 
@@ -203,6 +207,7 @@ function decode(buf){return new Promise((res,rej)=>ac().decodeAudioData(buf,res,
 
 /* Paso 4: filtros */
 $$('.f[data-f]:not(.soon)').forEach(b=>b.onclick=()=>{const f=b.dataset.f;S.filters.has(f)?S.filters.delete(f):S.filters.add(f);b.classList.toggle('sel');S.mix=null;});
+$('#bal').oninput=e=>{S.bal=+e.target.value;$('#bv').textContent=S.bal===0?'Equilibrado':(S.bal>0?'Más voz +'+S.bal:'Más música +'+(-S.bal));S.mix=null;};
 $('#pitch').oninput=e=>{S.pitch=+e.target.value;$('#pv').textContent=S.pitch===0?'Normal':(S.pitch>0?'+':'')+S.pitch;S.mix=null;};
 $('#listen').onclick=async()=>{if(!S.voice)return;$('#busy').hidden=false;
   try{const out=await build();$('#out').src=URL.createObjectURL(out.blob);$('#out').hidden=false;$('#out').play().catch(()=>{});}
@@ -241,11 +246,11 @@ async function build(){
   if(S.filters.has('radio')){const ls=ctx.createBiquadFilter();ls.type='lowshelf';ls.frequency.value=160;ls.gain.value=4;const pk=ctx.createBiquadFilter();pk.type='peaking';pk.frequency.value=3000;pk.Q.value=.9;pk.gain.value=5;const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=80;
     node.connect(hp);hp.connect(ls);ls.connect(pk);node=pk;}
   const comp=ctx.createDynamicsCompressor();comp.threshold.value=S.filters.has('radio')?-28:-18;comp.ratio.value=S.filters.has('radio')?5:3;comp.attack.value=.005;comp.release.value=.2;node.connect(comp);node=comp;
-  const vg=ctx.createGain();vg.gain.value=S.filters.has('radio')?1.5:1.25;node.connect(vg);
+  const vg=ctx.createGain();vg.gain.value=(S.filters.has('radio')?1.5:1.25)*(S.cancion?Math.pow(10,S.bal*1.5/20):1);node.connect(vg);
   if(S.filters.has('echo')){const cv=ctx.createConvolver();cv.buffer=impulse(ctx);const wet=ctx.createGain();wet.gain.value=.28;vg.connect(cv);cv.connect(wet);wet.connect(ctx.destination);}
   vg.connect(ctx.destination);vs.start(pre);
   if(S.cancion){const sb=await loadSong(S.cancion.f);const ss=ctx.createBufferSource();ss.buffer=sb;ss.loop=true;const sg=ctx.createGain();ss.connect(sg);sg.connect(ctx.destination);
-    const g=sg.gain,lo=.18,hi=.8;g.setValueAtTime(hi,0);g.setValueAtTime(hi,pre-.6);g.linearRampToValueAtTime(lo,pre);g.setValueAtTime(lo,pre+vd);g.linearRampToValueAtTime(hi,pre+vd+.8);g.setValueAtTime(hi,total-1.6);g.linearRampToValueAtTime(0,total);ss.start(0);}
+    const g=sg.gain,lo=.18*Math.pow(10,-S.bal*2.5/20),hi=.8;g.setValueAtTime(hi,0);g.setValueAtTime(hi,pre-.6);g.linearRampToValueAtTime(lo,pre);g.setValueAtTime(lo,pre+vd);g.linearRampToValueAtTime(hi,pre+vd+.8);g.setValueAtTime(hi,total-1.6);g.linearRampToValueAtTime(0,total);ss.start(0);}
   const out=await ctx.startRendering();
   const blob=wav(out);S.mix={blob,dur:total};return S.mix;}
 function wav(b){const ch=b.numberOfChannels,n=b.length,buf=new ArrayBuffer(44+n*ch*2),v=new DataView(buf);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0));},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
