@@ -99,7 +99,7 @@ audio{width:100%;margin-top:12px}
       <button class="f" data-f="clean"><b>✨ Limpiar voz</b><span>Quita ruido de fondo</span></button>
       <button class="f" data-f="radio"><b>📻 Voz de radio</b><span>Como un locutor</span></button>
       <button class="f" data-f="echo"><b>🏟️ Eco de estudio</b><span>Reverberación suave</span></button>
-      <button class="f soon" data-f="tune" disabled><b>🎤 Autotune</b><span>Muy pronto</span></button>
+      <button class="f soon" data-f="tune" id="tuneBtn"><b>🎤 Autotune</b><span id="tuneTxt">Muy pronto</span></button>
       <div class="pitch"><div class="row"><b style="font-size:14px">🎚️ Tono de voz</b><span id="pv">Normal</span></div>
         <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
         <div class="row"><span>Más grave</span><span>Más agudo</span></div></div>
@@ -126,6 +126,8 @@ audio{width:100%;margin-top:12px}
     <input type="text" id="de" maxlength="40" placeholder="Ej.: Laura">
     <label class="fld" for="para">¿Para quién es?</label>
     <input type="text" id="para" maxlength="40" placeholder="Ej.: mi madre, Carmen">
+    <label class="fld" for="tel">Tu móvil (WhatsApp) — para contestarte</label>
+    <input type="text" id="tel" inputmode="tel" maxlength="16" placeholder="Ej.: 600 123 456">
   </section>
 
   <section class="step off" id="s6">
@@ -151,6 +153,7 @@ audio{width:100%;margin-top:12px}
 <script>
 /* ===== CONFIGURACIÓN ===== */
 const WA_NUMERO = "";           // móvil del despacho, ej. "34600000000". Vacío = modo prueba
+const API = "";                 // servidor de felicitaciones, ej. "https://radio.ondasonika.com:8448". Vacío = modo prueba
 const MAX_SEG = 45, ANTELACION_DIAS = 5;
 const CANCIONES = {
   cumple:      [{t:"Fiesta (provisional)",f:"musica/provisional-fiesta.mp3"}],
@@ -161,7 +164,7 @@ const MOTIVO_TXT = {cumple:"Cumpleaños",aniversario:"Aniversario",amor:"Amor"};
 /* ========================== */
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const S={motivo:null,cancion:null,own:false,voice:null,filters:new Set(),pitch:0,bal:0,franja:null,mix:null,code:null};
+const S={motivo:null,cancion:null,own:false,voice:null,tuned:null,filters:new Set(),pitch:0,bal:0,franja:null,mix:null,code:null};
 let AC; const ac=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
 const unlock=n=>$('#s'+n).classList.remove('off');
 const pick=(btns,b)=>{btns.forEach(x=>x.classList.toggle('sel',x===b))};
@@ -195,7 +198,7 @@ $('#rec').onclick=async()=>{
   rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
   rec.onstop=async()=>{clearInterval(tick);stream.getTracks().forEach(t=>t.stop());
     $('#rec').classList.remove('on');$('#rec').textContent='🎙️ Volver a grabar';
-    try{const buf=await new Blob(chunks,{type:rec.mimeType}).arrayBuffer();S.voice=await decode(buf);S.mix=null;
+    try{const buf=await new Blob(chunks,{type:rec.mimeType}).arrayBuffer();S.voice=await decode(buf);S.tuned=null;S.mix=null;if(S.filters.has('tune')){S.filters.delete('tune');$('#tuneBtn').classList.remove('sel');}
       $('#recTime').textContent=`Grabado: ${S.voice.duration.toFixed(0)} s`;unlock(4);unlock(5);unlock(6);check();
       $('#listen').scrollIntoView({behavior:'smooth',block:'center'});}
     catch(e){$('#recErr').textContent='No se ha podido leer la grabación. Prueba otra vez.';}
@@ -208,6 +211,14 @@ function decode(buf){return new Promise((res,rej)=>ac().decodeAudioData(buf,res,
 /* Paso 4: filtros */
 $$('.f[data-f]:not(.soon)').forEach(b=>b.onclick=()=>{const f=b.dataset.f;S.filters.has(f)?S.filters.delete(f):S.filters.add(f);b.classList.toggle('sel');S.mix=null;});
 $('#bal').oninput=e=>{S.bal=+e.target.value;$('#bv').textContent=S.bal===0?'Equilibrado':(S.bal>0?'Más voz +'+S.bal:'Más música +'+(-S.bal));S.mix=null;};
+if(API){$('#tuneBtn').classList.remove('soon');$('#tuneTxt').textContent='Afina tu voz';}
+$('#tuneBtn').onclick=async()=>{if(!API||!S.voice)return;const b=$('#tuneBtn');
+  if(S.filters.has('tune')){S.filters.delete('tune');b.classList.remove('sel');S.mix=null;return;}
+  if(!S.tuned){$('#tuneTxt').textContent='Afinando… (unos segundos)';
+    try{const r=await fetch(API+'/api/tune',{method:'POST',body:wav(S.voice,S.voice.sampleRate)});if(!r.ok)throw 0;S.tuned=await decode(await r.arrayBuffer());}
+    catch(e){$('#tuneTxt').textContent='No disponible ahora';return;}
+    $('#tuneTxt').textContent='Afina tu voz';}
+  S.filters.add('tune');b.classList.add('sel');S.mix=null;};
 $('#pitch').oninput=e=>{S.pitch=+e.target.value;$('#pv').textContent=S.pitch===0?'Normal':(S.pitch>0?'+':'')+S.pitch;S.mix=null;};
 $('#listen').onclick=async()=>{if(!S.voice)return;$('#busy').hidden=false;
   try{const out=await build();$('#out').src=URL.createObjectURL(out.blob);$('#out').hidden=false;$('#out').play().catch(()=>{});}
@@ -232,14 +243,15 @@ let songCache={};
 async function loadSong(f){if(songCache[f])return songCache[f];const r=await fetch(f);songCache[f]=await decode(await r.arrayBuffer());return songCache[f];}
 
 async function build(){
-  let v=resample(mono(S.voice),S.voice.sampleRate,SR);
+  const src=(S.filters.has('tune')&&S.tuned)?S.tuned:S.voice;
+  let v=resample(mono(src),src.sampleRate,SR);
   // recortar silencios de inicio/fin
   let a=0,b=v.length-1;while(a<b&&Math.abs(v[a])<.01)a++;while(b>a&&Math.abs(v[b])<.01)b--;v=v.slice(Math.max(0,a-SR*.15),Math.min(v.length,b+SR*.3));
   if(S.filters.has('clean'))v=gate(v);
   v=pitchShift(v,S.pitch);
   v=normalize(v);
   const pre=S.own?0.3:2.5, post=S.own?0.5:3, vd=v.length/SR, total=pre+vd+post;
-  const ctx=new OfflineAudioContext(2,Math.ceil(total*SR),SR);
+  const ctx=new OfflineAudioContext(1,Math.ceil(total*SR),SR);
   const vb=ctx.createBuffer(1,v.length,SR);vb.copyToChannel?vb.copyToChannel(v,0):vb.getChannelData(0).set(v);
   const vs=ctx.createBufferSource();vs.buffer=vb;let node=vs;
   if(S.filters.has('clean')){const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=9000;node.connect(hp);hp.connect(lp);node=lp;}
@@ -253,8 +265,8 @@ async function build(){
     const g=sg.gain,lo=.18*Math.pow(10,-S.bal*2.5/20),hi=.8;g.setValueAtTime(hi,0);g.setValueAtTime(hi,pre-.6);g.linearRampToValueAtTime(lo,pre);g.setValueAtTime(lo,pre+vd);g.linearRampToValueAtTime(hi,pre+vd+.8);g.setValueAtTime(hi,total-1.6);g.linearRampToValueAtTime(0,total);ss.start(0);}
   const out=await ctx.startRendering();
   const blob=wav(out);S.mix={blob,dur:total};return S.mix;}
-function wav(b){const ch=b.numberOfChannels,n=b.length,buf=new ArrayBuffer(44+n*ch*2),v=new DataView(buf);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0));},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
-  w('RIFF');u32(36+n*ch*2);w('WAVE');w('fmt ');u32(16);u16(1);u16(ch);u32(SR);u32(SR*ch*2);u16(ch*2);u16(16);w('data');u32(n*ch*2);
+function wav(b,rate){const R=rate||SR,ch=b.numberOfChannels,n=b.length,buf=new ArrayBuffer(44+n*ch*2),v=new DataView(buf);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0));},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
+  w('RIFF');u32(36+n*ch*2);w('WAVE');w('fmt ');u32(16);u16(1);u16(ch);u32(R);u32(R*ch*2);u16(ch*2);u16(16);w('data');u32(n*ch*2);
   const d=[...Array(ch)].map((_,c)=>b.getChannelData(c));let m=0;for(const x of d)for(const s of x)m=Math.max(m,Math.abs(s));const k=m>.98?.98/m:1;
   for(let i=0;i<n;i++)for(let c=0;c<ch;c++){v.setInt16(o,Math.max(-1,Math.min(1,d[c][i]*k))*32767,true);o+=2;}return new Blob([buf],{type:'audio/wav'});}
 
@@ -262,18 +274,24 @@ function wav(b){const ch=b.numberOfChannels,n=b.length,buf=new ArrayBuffer(44+n*
 const minD=new Date();minD.setDate(minD.getDate()+ANTELACION_DIAS);const iso=d=>d.toISOString().slice(0,10);
 $('#dia').min=iso(minD);$('#dia').value=iso(minD);
 $$('#franjas .opt').forEach(b=>b.onclick=()=>{pick($$('#franjas .opt'),b);S.franja=b.dataset.fr;check();});
-['#dia','#de','#para','#ok'].forEach(s=>$(s).addEventListener('input',check));$('#ok').addEventListener('change',check);
+['#dia','#de','#para','#tel','#ok'].forEach(s=>$(s).addEventListener('input',check));$('#ok').addEventListener('change',check);
 
 /* Paso 6 */
 function check(){const okDate=$('#dia').value&&$('#dia').value>=$('#dia').min;
-  $('#send').disabled=!(S.voice&&S.motivo&&(S.cancion||S.own)&&S.franja&&okDate&&$('#de').value.trim()&&$('#para').value.trim()&&$('#ok').checked);}
+  $('#send').disabled=!(S.voice&&S.motivo&&(S.cancion||S.own)&&S.franja&&okDate&&$('#de').value.trim()&&$('#para').value.trim()&&$('#tel').value.replace(/\D/g,'').length>=9&&$('#ok').checked);}
 $('#send').onclick=async()=>{$('#sendErr').textContent='';
   if(!S.mix){$('#sendErr').textContent='Antes, escucha cómo queda (paso 4).';$('#listen').scrollIntoView({behavior:'smooth',block:'center'});return;}
-  S.code=Math.random().toString(36).slice(2,8).toUpperCase();
+  const meta={motivo:S.motivo,franja:S.franja,fecha:$('#dia').value,de:$('#de').value.trim(),para:$('#para').value.trim(),tel:$('#tel').value,cancion:S.cancion?S.cancion.t:'',consent:true};
+  if(API){$('#send').disabled=true;$('#send').lastChild.textContent=' Enviando…';
+    try{const r=await fetch(API+'/api/dedica',{method:'POST',headers:{'X-Meta':btoa(unescape(encodeURIComponent(JSON.stringify(meta))))},body:S.mix.blob});
+      const j=await r.json();if(!r.ok)throw new Error(j.detail||'Error');S.code=j.code;}
+    catch(e){$('#sendErr').textContent='No se ha podido enviar: '+e.message+'. Prueba otra vez.';$('#send').disabled=false;$('#send').lastChild.textContent=' Enviar por WhatsApp';return;}
+  } else S.code=Math.random().toString(36).slice(2,8).toUpperCase();
   const d=new Date($('#dia').value+'T12:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
   const txt=`Hola ONDA SONIKA 🎉 Mi felicitación: código ${S.code}\n${MOTIVO_TXT[S.motivo]} para ${$('#para').value.trim()}\n${d} · ${S.franja}\nDe: ${$('#de').value.trim()}`;
   $('#code').textContent=S.code;$('#dl').href=URL.createObjectURL(S.mix.blob);$('#dl').download=`felicitacion-${S.code}.wav`;
   $('#done').style.display='block';
+  if(API)$('#dl').style.display='none';
   if(WA_NUMERO){location.href=`https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(txt)}`;$('#doneNote').textContent='Se ha abierto WhatsApp con tu mensaje: envíalo y listo.';}
   else{$('#doneNote').textContent='Versión de prueba: todavía no se envía nada. Este es el mensaje que llegaría por WhatsApp:\n\n'+txt;$('#doneNote').style.whiteSpace='pre-line';}
   $('#done').scrollIntoView({behavior:'smooth'});};

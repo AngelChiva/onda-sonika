@@ -1,0 +1,11 @@
+services:
+  dedica:
+    build: .
+    container_name: dedica
+    restart: unless-stopped
+    ports: ["9443:9443"]
+    env_file: .env
+    volumes:
+      - ./data:/data
+      - ./certs:/certs:ro
+    mem_limit: 700m
