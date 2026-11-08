@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Estudio de cuñas · ONDA SONIKA</title>
+<link rel="icon" href="../logo.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0c;--panel:#151517;--line:#26262a;--txt:#f4f1ec;--mut:#a29d96;--or:#ff7a1a;--or2:#ffb347;--ok:#25d366}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:Archivo,system-ui,sans-serif;min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px 60px}
+.top{display:flex;align-items:center;gap:12px}.top img{width:52px;height:52px;border-radius:12px}
+.top b{font-size:13px;letter-spacing:.16em;color:var(--or2)}
+h1{font-size:28px;font-weight:900;margin:14px 0 4px}
+.lead{color:var(--mut);font-size:14px;line-height:1.45}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px;margin-top:16px}
+.num{font-size:12px;letter-spacing:.14em;color:var(--or2);font-weight:700}
+h2{font-size:19px;font-weight:900;margin:4px 0 12px}
+.drop{border:2px dashed #3a3a40;border-radius:16px;padding:22px;text-align:center;cursor:pointer;color:var(--mut);font-size:14px;display:block}
+.drop:hover,.drop.over{border-color:var(--or);color:var(--txt)}
+.drop b{display:block;color:var(--txt);font-size:16px;margin-bottom:4px}
+.drop.done{border-style:solid;border-color:var(--ok);color:var(--txt)}
+input[type=file]{display:none}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ctl{margin-top:14px}.ctl label{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}.ctl label span{color:var(--or2);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--or)}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px}.chk input{accent-color:var(--or);width:18px;height:18px}
+input[type=text]{width:100%;background:#0f0f11;border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:12px;font:inherit;font-size:16px}
+.btn{width:100%;margin-top:14px;padding:16px;border-radius:14px;border:0;font:inherit;font-weight:900;font-size:17px;cursor:pointer;background:linear-gradient(145deg,var(--or2),var(--or));color:#111}
+.btn:disabled{opacity:.4;cursor:default}
+.btn2{padding:12px 14px;border-radius:12px;border:1px solid var(--or);background:transparent;color:var(--or2);font:inherit;font-weight:700;cursor:pointer;font-size:14px}
+.dl{display:flex;gap:10px;margin-top:12px}.dl a{flex:1;text-align:center;text-decoration:none}
+audio{width:100%;margin-top:12px}
+.info{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.45}
+.busy{color:var(--or2);font-size:14px;margin-top:10px}
+canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0f11;display:block}
+.lock{max-width:360px;margin:20vh auto 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="lock" id="lock">
+  <img src="../logo.jpg" alt="" style="width:80px;border-radius:16px">
+  <h1>Estudio de cuñas</h1>
+  <p class="lead" style="margin-bottom:14px">Acceso privado</p>
+  <input type="text" id="pin" placeholder="Clave" autocomplete="off" style="text-align:center">
+  <button class="btn" id="enter">Entrar</button>
+  <p class="info" id="pinErr"></p>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <div class="top"><img src="../logo.jpg" alt=""><b>ONDA SONIKA · PRIVADO</b></div>
+  <h1>Estudio de cuñas 🎙️</h1>
+  <p class="lead">Sube la voz del locutor y la música. Todas las cuñas salen con el mismo sonido: misma limpieza, mismo volumen y misma mezcla. Nada se sube a internet: todo se procesa en este ordenador o móvil.</p>
+
+  <section class="box">
+    <div class="num">PASO 1</div><h2>Voz del locutor</h2>
+    <label class="drop" id="dVoz"><b>🎤 Sube el audio de la voz</b>mp3, wav, m4a… (o arrástralo aquí)<input type="file" id="fVoz" accept="audio/*"></label>
+    <div class="chk"><input type="checkbox" id="oBreath" checked><span>Quitar respiraciones</span></div>
+    <div class="chk"><input type="checkbox" id="oClean" checked><span>Limpiar ruido de fondo</span></div>
+    <div class="chk"><input type="checkbox" id="oRadio" checked><span>Voz de radio (presencia, compresión y volumen fijo)</span></div>
+  </section>
+
+  <section class="box">
+    <div class="num">PASO 2</div><h2>Música</h2>
+    <label class="drop" id="dMus"><b>🎵 Sube la canción</b>Elijo yo el trozo más pegadizo (o lo cambias abajo)<input type="file" id="fMus" accept="audio/*"></label>
+    <div class="chk"><input type="checkbox" id="oNoMus"><span>Sin música (solo voz)</span></div>
+    <div id="musCtl" hidden>
+      <canvas id="wave" width="1400" height="140"></canvas>
+      <div class="ctl"><label>Trozo de la canción desde el segundo <span id="vStart">0</span></label><input type="range" id="start" min="0" max="100" step="0.5" value="0"></div>
+      <div class="row" style="margin-top:8px"><button class="btn2" id="auto">✨ Trozo más pegadizo</button><button class="btn2" id="prevMus">▶ Escuchar trozo</button></div>
+    </div>
+  </section>
+
+  <section class="box">
+    <div class="num">PASO 3</div><h2>Mezcla</h2>
+    <div class="ctl"><label>Música antes de la voz <span id="vIn">3 s</span></label><input type="range" id="intro" min="0" max="8" step="0.5" value="3"></div>
+    <div class="ctl"><label>Música después de la voz <span id="vOut">4 s</span></label><input type="range" id="outro" min="0" max="10" step="0.5" value="4"></div>
+    <div class="ctl"><label>Voz o música <span id="vBal">Equilibrado</span></label><input type="range" id="bal" min="-5" max="5" step="1" value="0">
+      <div class="row info" style="margin-top:2px"><span>Más música</span><span>Más voz</span></div></div>
+    <label style="display:block;font-size:14px;margin:14px 0 6px">Nombre del archivo</label>
+    <input type="text" id="name" placeholder="Ej.: Cuña Corident noviembre">
+    <button class="btn" id="go" disabled>🎚️ Crear la cuña</button>
+    <div class="busy" id="busy" hidden>Procesando…</div>
+    <audio id="out" controls hidden></audio>
+    <p class="info" id="stats"></p>
+    <div class="dl" id="dl" hidden><a class="btn2" id="dlMp3">⬇ Descargar MP3</a><a class="btn2" id="dlWav">⬇ Descargar WAV</a></div>
+  </section>
+  <p class="info" style="margin-top:16px">Consejo: graba siempre con el mismo micrófono y a la misma distancia; el estudio iguala el resto. Tamaño máximo recomendado: canciones de hasta 10 minutos.</p>
+</div>
+
+<script src="lame.min.js"></script>
+<script>
+/* ===== acceso ===== */
+const PIN_HASH="76d416b905e8ae9d";            // se compara con hash simple de la clave
+async function h(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toLowerCase()));return [...new Uint8Array(b)].slice(0,8).map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function enter(){if(await h($('#pin').value)===PIN_HASH||localStorage.getItem('estudio')===PIN_HASH){try{localStorage.setItem('estudio',PIN_HASH)}catch(e){}$('#lock').hidden=true;$('#app').hidden=false}else $('#pinErr').textContent='Clave incorrecta'}
+const $=s=>document.querySelector(s);
+$('#enter').onclick=enter;$('#pin').addEventListener('keydown',e=>e.key==='Enter'&&enter());
+try{if(localStorage.getItem('estudio')===PIN_HASH){$('#lock').hidden=true;$('#app').hidden=false}}catch(e){}
+
+/* ===== audio ===== */
+const SR=44100;let AC;const ac=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
+const S={voz:null,mus:null,musMono:null,start:0,mix:null};
+const decode=buf=>new Promise((res,rej)=>ac().decodeAudioData(buf,res,rej));
+function mono(b){const d=new Float32Array(b.length);for(let c=0;c<b.numberOfChannels;c++){const x=b.getChannelData(c);for(let i=0;i<d.length;i++)d[i]+=x[i]/b.numberOfChannels;}return d;}
+function resample(d,from,to){if(from===to)return d;const n=Math.round(d.length*to/from),o=new Float32Array(n),r=from/to;for(let i=0;i<n;i++){const p=i*r,k=Math.floor(p),f=p-k;o[i]=(d[k]||0)*(1-f)+(d[k+1]||0)*f;}return o;}
+
+function setupDrop(lab,inp,cb){inp.onchange=()=>inp.files[0]&&cb(inp.files[0]);if(lab.dataset.on)return;lab.dataset.on=1;lab._cb=cb;['dragover','dragenter'].forEach(e=>lab.addEventListener(e,ev=>{ev.preventDefault();lab.classList.add('over')}));
+ ['dragleave','drop'].forEach(e=>lab.addEventListener(e,()=>lab.classList.remove('over')));
+ lab.addEventListener('drop',ev=>{ev.preventDefault();if(ev.dataTransfer.files[0])lab._cb(ev.dataTransfer.files[0])});}
+async function loadVoz(f){try{S.voz=await decode(await f.arrayBuffer());$('#dVoz').classList.add('done');$('#dVoz').innerHTML=`<b>✅ ${f.name}</b>${S.voz.duration.toFixed(1)} s · toca para cambiarla<input type="file" id="fVoz" accept="audio/*">`;setupDrop($('#dVoz'),$('#fVoz'),loadVoz);if(!$('#name').value)$('#name').value='Cuña '+f.name.replace(/\.[^.]+$/,'');drawWave();ready()}catch(e){alert('No puedo leer ese audio')}}
+setupDrop($('#dVoz'),$('#fVoz'),loadVoz);
+async function loadMus(f){try{S.mus=await decode(await f.arrayBuffer());S.musMono=resample(mono(S.mus),S.mus.sampleRate,SR);
+ $('#dMus').classList.add('done');$('#dMus').innerHTML=`<b>✅ ${f.name}</b>${Math.round(S.mus.duration)} s · toca para cambiarla<input type="file" id="fMus" accept="audio/*">`;setupDrop($('#dMus'),$('#fMus'),loadMus);
+ $('#musCtl').hidden=false;$('#start').max=Math.max(0,S.mus.duration-5).toFixed(1);autoPick();ready()}catch(e){alert('No puedo leer esa canción')}}
+setupDrop($('#dMus'),$('#fMus'),loadMus);
+$('#oNoMus').onchange=()=>{$('#dMus').style.opacity=$('#oNoMus').checked?.4:1;$('#musCtl').style.opacity=$('#oNoMus').checked?.4:1;ready()};
+function ready(){$('#go').disabled=!(S.voz&&(S.mus||$('#oNoMus').checked));S.mix=null}
+const need=()=>(S.voz?S.voz.duration:20)+ +$('#intro').value+ +$('#outro').value;
+
+/* trozo más pegadizo: energía + "golpes" (cambios bruscos) en una ventana del largo de la cuña; evita el principio */
+function autoPick(){if(!S.musMono)return;const d=S.musMono,N=Math.round(SR*.1),fr=Math.floor(d.length/N),e=new Float32Array(fr),fl=new Float32Array(fr);
+ for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v}e[k]=Math.sqrt(s/N);fl[k]=k?Math.max(0,e[k]-e[k-1]):0}
+ const z=a=>{const m=a.reduce((x,y)=>x+y,0)/a.length,sd=Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length)||1;return a.map(v=>(v-m)/sd)};
+ const ez=z(e),fz=z(fl),sc=ez.map((v,i)=>v+.6*fz[i]);const w=Math.min(fr-1,Math.round(need()*10));
+ let best=0,bs=-1e9,run=0;for(let k=0;k<w;k++)run+=sc[k];const skip=Math.min(Math.round(fr*.08),150);
+ for(let k=0;k+w<fr;k++){if(k>=skip&&run>bs){bs=run;best=k}run+=sc[k+w]-sc[k]}
+ S.start=best/10;$('#start').value=S.start;$('#vStart').textContent=S.start.toFixed(1);drawWave();S.mix=null}
+$('#auto').onclick=autoPick;
+$('#start').oninput=e=>{S.start=+e.target.value;$('#vStart').textContent=S.start.toFixed(1);drawWave();S.mix=null};
+function drawWave(){const c=$('#wave'),x=c.getContext('2d'),d=S.musMono;if(!d)return;x.clearRect(0,0,c.width,c.height);const W=c.width,H=c.height,st=Math.floor(d.length/W);
+ const a=S.start/S.mus.duration*W,b=Math.min(W,(S.start+need())/S.mus.duration*W);x.fillStyle='rgba(255,122,26,.18)';x.fillRect(a,0,b-a,H);
+ for(let i=0;i<W;i++){let m=0;for(let j=0;j<st;j+=8)m=Math.max(m,Math.abs(d[i*st+j]));x.fillStyle=(i>=a&&i<=b)?'#ff7a1a':'#4a4a50';x.fillRect(i,H/2-m*H/2,1,m*H)}}
+let prevSrc=null;$('#prevMus').onclick=()=>{if(!S.mus)return;if(prevSrc){prevSrc.stop();prevSrc=null;$('#prevMus').textContent='▶ Escuchar trozo';return}
+ prevSrc=ac().createBufferSource();prevSrc.buffer=S.mus;prevSrc.connect(ac().destination);prevSrc.start(0,S.start,need());$('#prevMus').textContent='⏹ Parar';prevSrc.onended=()=>{prevSrc=null;$('#prevMus').textContent='▶ Escuchar trozo'}};
+['#intro','#outro'].forEach(s=>$(s).oninput=()=>{$('#vIn').textContent=$('#intro').value+' s';$('#vOut').textContent=$('#outro').value+' s';drawWave();S.mix=null});
+$('#bal').oninput=e=>{const b=+e.target.value;$('#vBal').textContent=b===0?'Equilibrado':(b>0?'Más voz +'+b:'Más música +'+(-b));S.mix=null};
+
+/* --- procesado de voz (siempre la misma cadena = mismo sonido) --- */
+function deBreath(d){const N=Math.round(SR*.02),fr=Math.floor(d.length/N),rms=new Float32Array(fr),vo=new Uint8Array(fr);
+ for(let k=0;k<fr;k++){const o=k*N;let s=0;for(let i=0;i<N;i++){const x=d[o+i];s+=x*x;}rms[k]=Math.sqrt(s/N);let best=0;const e0=s+1e-9;
+  for(let lag=Math.floor(SR/500);lag<=Math.floor(SR/70);lag+=2){let c=0,e1=0;for(let i=0;i<N;i++){const a=d[o+i],b=d[o+i+lag]||0;c+=a*b;e1+=b*b;}const r=c/Math.sqrt(e0*(e1+1e-9));if(r>best)best=r;}vo[k]=best>.55?1:0;}
+ const sp=[...rms].filter((_,k)=>vo[k]).sort((a,b)=>a-b),speech=sp.length?sp[Math.floor(sp.length*.5)]:0;if(!speech)return d;const lo=[...rms].sort((a,b)=>a-b)[Math.floor(fr*.05)]||0;
+ const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*.45&&rms[k]>lo*1.6)?1:0;const g=new Float32Array(fr).fill(1);
+ for(let k=0;k<fr;){if(!cand[k]){k++;continue}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=120)for(let q=k;q<j;q++)g[q]=.1;k=j}
+ let cur=1;for(let k=0;k<fr;k++){const t=g[k];for(let i=0;i<N;i++){cur+=(t-cur)*.004;d[k*N+i]*=cur}}return d}
+function gate(d){const N=1024,fr=Math.floor(d.length/N),rms=[];for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v}rms.push(Math.sqrt(s/N))}
+ const so=[...rms].sort((a,b)=>a-b),fl=so[Math.floor(so.length*.1)]||0,th=fl*3+1e-4;let g=1;for(let k=0;k<fr;k++){const t=rms[k]>th?1:.08;for(let i=0;i<N;i++){g+=(t-g)*(t>g?.02:.0015);d[k*N+i]*=g}}return d}
+function trim(d){let a=0,b=d.length-1;while(a<b&&Math.abs(d[a])<.008)a++;while(b>a&&Math.abs(d[b])<.008)b--;return d.slice(Math.max(0,a-SR*.05),Math.min(d.length,b+SR*.25))}
+function rmsDb(d){let s=0,n=0;for(let i=0;i<d.length;i++){const v=d[i];if(Math.abs(v)>.01){s+=v*v;n++}}return 10*Math.log10(s/Math.max(1,n)+1e-12)}
+
+async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);v=trim(v);
+ if($('#oBreath').checked)v=deBreath(v);if($('#oClean').checked)v=gate(v);
+ const ctx=new OfflineAudioContext(1,v.length,SR),b=ctx.createBuffer(1,v.length,SR);b.getChannelData(0).set(v);const s=ctx.createBufferSource();s.buffer=b;let n=s;
+ const f=(type,fr,g,q)=>{const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=fr;if(g!=null)x.gain.value=g;if(q)x.Q.value=q;n.connect(x);n=x};
+ f('highpass',80);
+ if($('#oRadio').checked){f('lowshelf',130,2.5);f('peaking',280,-2.5,1);f('peaking',3500,3.5,.9);f('peaking',6800,-2.5,3);f('highshelf',10000,2);
+  const c1=ctx.createDynamicsCompressor();c1.threshold.value=-26;c1.ratio.value=4;c1.attack.value=.004;c1.release.value=.12;c1.knee.value=6;n.connect(c1);n=c1;}
+ const c2=ctx.createDynamicsCompressor();c2.threshold.value=-8;c2.ratio.value=20;c2.attack.value=.001;c2.release.value=.08;c2.knee.value=0;n.connect(c2);n=c2;
+ n.connect(ctx.destination);s.start();let o=await ctx.startRendering();let d=o.getChannelData(0);
+ // volumen fijo: misma sonoridad en todas las cuñas
+ const k=Math.pow(10,(-17-rmsDb(d))/20);let pk=0;for(let i=0;i<d.length;i++){d[i]*=k;pk=Math.max(pk,Math.abs(d[i]))}if(pk>.89)for(let i=0;i<d.length;i++)d[i]*=.89/pk;return d}
+
+$('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#dl').hidden=true;await new Promise(r=>setTimeout(r,30));
+ try{const v=await processVoice(),vd=v.length/SR,noMus=$('#oNoMus').checked||!S.mus;
+  const pre=noMus?0.2:+$('#intro').value,post=noMus?0.3:+$('#outro').value,total=pre+vd+post,bal=+$('#bal').value;
+  const ctx=new OfflineAudioContext(2,Math.ceil(total*SR),SR);
+  const vb=ctx.createBuffer(1,v.length,SR);vb.getChannelData(0).set(v);const vs=ctx.createBufferSource();vs.buffer=vb;const vg=ctx.createGain();vg.gain.value=Math.pow(10,bal*1/20);vs.connect(vg);vg.connect(ctx.destination);vs.start(pre);
+  if(!noMus){const ms=ctx.createBufferSource();ms.buffer=S.mus;ms.loop=true;ms.loopStart=S.start;ms.loopEnd=S.mus.duration;
+   // música a un nivel fijo respecto a la voz
+   const mrms=rmsDb(S.musMono.subarray(Math.floor(S.start*SR),Math.floor((S.start+total)*SR)));const base=Math.pow(10,(-19-mrms)/20);
+   const hi=base,lo=base*0.22*Math.pow(10,-bal*2.5/20);const g=ctx.createGain();ms.connect(g);g.connect(ctx.destination);const G=g.gain;
+   G.setValueAtTime(0,0);G.linearRampToValueAtTime(hi,.25);G.setValueAtTime(hi,Math.max(.3,pre-.5));G.linearRampToValueAtTime(lo,pre+.05);
+   G.setValueAtTime(lo,pre+vd);G.linearRampToValueAtTime(hi,pre+vd+.7);const fo=Math.min(2.5,post);G.setValueAtTime(hi,total-fo);G.linearRampToValueAtTime(0,total);
+   ms.start(0,S.start);}
+  const out=await ctx.startRendering();
+  // limitador final
+  let pk=0;for(let c=0;c<2;c++){for(const x of out.getChannelData(c))pk=Math.max(pk,Math.abs(x))}const k=pk>.93?.93/pk:1;
+  const L=out.getChannelData(0),R=out.getChannelData(1);if(k<1)for(let i=0;i<L.length;i++){L[i]*=k;R[i]*=k}
+  const nm=($('#name').value.trim()||'Cuña ONDA SONIKA').replace(/[\\/:*?"<>|]/g,'');
+  const wav=toWav(L,R),mp3=toMp3(L,R);$('#out').src=URL.createObjectURL(wav);$('#out').hidden=false;$('#out').play().catch(()=>{});
+  $('#dlWav').href=URL.createObjectURL(wav);$('#dlWav').download=nm+'.wav';
+  if(mp3){$('#dlMp3').href=URL.createObjectURL(mp3);$('#dlMp3').download=nm+'.mp3';$('#dlMp3').hidden=false}else $('#dlMp3').hidden=true;
+  $('#dl').hidden=false;$('#stats').textContent=`Duración: ${total.toFixed(1)} s (voz ${vd.toFixed(1)} s${noMus?'':` + ${pre} s antes + ${post} s después`}).`;}
+ catch(e){console.error(e);alert('No se ha podido crear la cuña: '+e.message)}
+ $('#busy').hidden=true;$('#go').disabled=false};
+
+function toWav(L,R){const n=L.length,buf=new ArrayBuffer(44+n*4),v=new DataView(buf);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0))},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
+ w('RIFF');u32(36+n*4);w('WAVE');w('fmt ');u32(16);u16(1);u16(2);u32(SR);u32(SR*4);u16(4);u16(16);w('data');u32(n*4);
+ for(let i=0;i<n;i++){v.setInt16(o,Math.max(-1,Math.min(1,L[i]))*32767,true);o+=2;v.setInt16(o,Math.max(-1,Math.min(1,R[i]))*32767,true);o+=2}return new Blob([buf],{type:'audio/wav'})}
+function toMp3(L,R){if(!window.lamejs)return null;const enc=new lamejs.Mp3Encoder(2,SR,192),bl=1152,out=[];const cv=a=>{const x=new Int16Array(a.length);for(let i=0;i<a.length;i++)x[i]=Math.max(-32768,Math.min(32767,a[i]*32767));return x};
+ const l=cv(L),r=cv(R);for(let i=0;i<l.length;i+=bl){const b=enc.encodeBuffer(l.subarray(i,i+bl),r.subarray(i,i+bl));if(b.length)out.push(b)}const e=enc.flush();if(e.length)out.push(e);return new Blob(out,{type:'audio/mpeg'})}
+</script>
+</body>
+</html>
