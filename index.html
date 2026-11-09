@@ -101,7 +101,7 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
   <section id="pide">
     <h2>PIDE TU CANCIÓN</h2>
     <div class="req">
-      <p class="rq-lead">🎵 Busca tu canción y pídela: <b>suena en unos minutos</b>.</p>
+      <p class="rq-lead">🎵 Busca tu canción y pídela: <b>suena en las próximas canciones</b>. Hasta 2 peticiones al día.</p>
       <input type="search" id="rqQ" placeholder="Busca por canción o artista…" autocomplete="off">
       <div id="rqList" class="rq-list"></div>
       <p class="rq-msg" id="rqMsg"></p>
@@ -160,11 +160,17 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
   box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><button data-id="${x.id}">Pedir</button></div>`).join("");
   miss.hidden=false}
  q.addEventListener("input",draw);
+ const DEV=(()=>{try{let d=localStorage.getItem("os_dev");if(!d){d=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("os_dev",d)}return d}catch(_){return""}})();
+ const SRV="https://radio.ondasonika.com:9443/api/pedir",perm=b=>fetch(SRV,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+ const fail=(b,t)=>{b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent=t};
  box.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||busy)return;busy=1;b.disabled=true;b.textContent="…";
+  const x=L.find(y=>String(y.id)===b.dataset.id)||{},who={dev:DEV,artista:x.a||""};let q=null;
+  try{const p=await perm(who);const pj=await p.json().catch(()=>({}));if(p.status===429){fail(b,pj.detail||"Ahora no se puede pedir. Prueba más tarde.");busy=0;return}if(p.ok)q=pj.quedan}
+  catch(_){/* si el servidor de límites no responde, se pide igual */}
   try{const r=await fetch(API+"/api/station/"+ST+"/request/"+b.dataset.id,{method:"POST"});const j=await r.json().catch(()=>({}));
-   if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en los próximos minutos en ONDA SONIKA 📻"}
-   else{b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent=(j.formatted_message||j.message||"Ahora no se puede pedir esta canción. Prueba con otra o más tarde.")}}
-  catch(_){b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent="No se ha podido enviar. Prueba otra vez."}busy=0});
+   if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en las próximas canciones de ONDA SONIKA 📻"+(q===0?" (Hoy ya no te quedan más peticiones.)":q===1?" (Te queda 1 petición hoy.)":"")}
+   else{perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción ha sonado o se ha pedido hace poco. Prueba con otra o más tarde.")}}
+  catch(_){perm({...who,cancelar:1}).catch(()=>{});fail(b,"No se ha podido enviar. Prueba otra vez.")}busy=0});
 })();
 if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADORES.map(s=>{
  const h=s.url||(s.wa?"https://wa.me/"+s.wa:(s.tel?"tel:"+s.tel:""));

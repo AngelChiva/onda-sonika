@@ -286,6 +286,38 @@ def limpieza():
         time.sleep(86400)
 threading.Thread(target=limpieza, daemon=True).start()
 
+# ---------- Pide tu canción: límites ----------
+# Cada persona (su móvil) puede pedir 2 canciones al día; cada conexión, 6 al día.
+# Un mismo artista no se puede pedir más de una vez cada hora (para que no suene lo mismo 50 veces).
+PEDIR_DIA, PEDIR_IP_DIA, ARTISTA_MIN = 2, 6, 60
+_ped = {"dia": None, "dev": defaultdict(int), "ip": defaultdict(int), "art": {}}
+_ped_lock = threading.Lock()
+
+def _norm(t): return " ".join(str(t or "").lower().split())
+
+@app.post("/api/pedir")
+async def pedir(req: Request):
+    """Da permiso (o no) para pedir una canción que YA está en la radio. Si lo da, la web la pide a AzuraCast."""
+    d = await req.json()
+    dev = str(d.get("dev", ""))[:40] or "?"; ip = ip_of(req); art = _norm(d.get("artista"))
+    if d.get("cancelar"):
+        with _ped_lock:
+            _ped["dev"][dev] = max(0, _ped["dev"][dev] - 1); _ped["ip"][ip] = max(0, _ped["ip"][ip] - 1); _ped["art"].pop(art, None)
+        return {"ok": True}
+    ahora = dt.datetime.now(TZ)
+    with _ped_lock:
+        if _ped["dia"] != ahora.date():
+            _ped.update(dia=ahora.date(), dev=defaultdict(int), ip=defaultdict(int), art={})
+        if _ped["dev"][dev] >= PEDIR_DIA or _ped["ip"][ip] >= PEDIR_IP_DIA:
+            raise HTTPException(429, f"Ya has pedido {PEDIR_DIA} canciones hoy. ¡Mañana puedes pedir más! 📻")
+        ult = _ped["art"].get(art)
+        if art and ult and (ahora - ult).total_seconds() < ARTISTA_MIN * 60:
+            raise HTTPException(429, "Este artista ya se ha pedido hace poco. Prueba con otro o vuelve en un rato.")
+        _ped["dev"][dev] += 1; _ped["ip"][ip] += 1
+        if art: _ped["art"][art] = ahora
+        quedan = PEDIR_DIA - _ped["dev"][dev]
+    return {"ok": True, "quedan": quedan}
+
 @app.get("/health")
 def health(): return {"ok": True}
 
