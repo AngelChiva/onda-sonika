@@ -152,7 +152,9 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
  const N=t=>(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  const esc=t=>String(t||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
  const q=document.getElementById("rqQ"),box=document.getElementById("rqList"),msg=document.getElementById("rqMsg"),miss=document.getElementById("rqMiss"),wa=document.getElementById("rqWa");
- fetch(API+"/api/station/"+ST+"/requests").then(r=>r.json()).then(j=>{L=(Array.isArray(j)?j:j.rows||[]).map(x=>({id:x.request_id,a:x.song.artist,t:x.song.title,k:N(x.song.artist+" "+x.song.title)}))}).catch(()=>{});
+ const add=a=>{const ids=new Set(L.map(x=>x.id));a.forEach(x=>{if(!ids.has(x.id)){ids.add(x.id);L.push({...x,k:N(x.a+" "+x.t)})}})};
+ fetch("https://radio.ondasonika.com:9443/api/canciones").then(r=>r.json()).then(j=>add(j.canciones||[])).catch(()=>{});
+ fetch(API+"/api/station/"+ST+"/requests").then(r=>r.json()).then(j=>add((Array.isArray(j)?j:j.rows||[]).map(x=>({id:x.request_id,a:x.song.artist,t:x.song.title})))).catch(()=>{});
  function draw(){const v=N(q.value.trim());msg.textContent="";
   wa.href="https://wa.me/"+WA+"?text="+encodeURIComponent("🎵 Hola ONDA SONIKA, ¿me ponéis esta canción? "+(q.value.trim()||""));
   if(v.length<2){box.innerHTML="";miss.hidden=true;return}

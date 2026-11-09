@@ -337,6 +337,45 @@ h1{{font-size:26px;margin:14px 0 6px}}p{{color:var(--mut);line-height:1.45}}audi
 .tabs .on{{border-color:var(--or);color:var(--or2)}}.st.aceptada{{color:#25d366}}.st.rechazada{{color:#ff8a80}}.err{{color:#ff8a80}}a{{color:var(--or2)}}
 </style></head><body><div class="w"><div class="top">ONDA SONIKA</div>{body}</div></body></html>"""
 
+# ---------- Pide tu canción: lista completa de canciones ----------
+# AzuraCast solo enseña en su lista pública las canciones de las listas que suenan en ese momento.
+# Aquí: cada 10 minutos se mete toda la música en la lista "Peticiones (no tocar)" (también lo que Ángel suba nuevo)
+# y se guarda la lista completa para la web.
+PET_NOMBRE = "Peticiones (no tocar)"
+NO_MUSICA = ("7 Identificativos", "8 Anuncios", "10 Dedicatorias")
+_canciones = {"lista": [], "hora": None}
+
+def _sync_canciones():
+    pls = az("GET", "/playlists")
+    pet = next((p["id"] for p in pls if p.get("name") == PET_NOMBRE), None)
+    if pet is None: return
+    files = az("GET", "/files")
+    vistas, lista = set(), []
+    for f in files:
+        if str(f.get("path", "")).startswith(NO_MUSICA): continue
+        ids = [p["id"] for p in (f.get("playlists") or [])]
+        if pet not in ids:
+            try: az("PUT", f"/file/{f['id']}", {"playlists": [{"id": x} for x in ids + [pet]]})
+            except Exception as e: print("peticiones:", f.get("path"), e); continue
+        if f.get("song_id") in vistas: continue
+        vistas.add(f.get("song_id"))
+        lista.append({"id": f["unique_id"], "a": f.get("artist") or "", "t": f.get("title") or ""})
+    lista.sort(key=lambda x: (x["a"].lower(), x["t"].lower()))
+    _canciones.update(lista=lista, hora=dt.datetime.now(TZ).isoformat(timespec="minutes"))
+
+def _bucle_canciones():
+    while True:
+        try:
+            if az_key(): _sync_canciones()
+        except Exception as e: print("canciones:", e)
+        time.sleep(600)
+threading.Thread(target=_bucle_canciones, daemon=True).start()
+
+@app.get("/api/canciones")
+def canciones():
+    return JSONResponse({"canciones": _canciones["lista"], "actualizado": _canciones["hora"]},
+                        headers={"Cache-Control": "public, max-age=300"})
+
 # precarga el modelo de voz a texto al arrancar, para que la primera felicitación no tarde
 def _precarga():
     try:
