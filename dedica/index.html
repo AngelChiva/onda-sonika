@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Felicita en ONDA SONIKA</title>
+<link rel="icon" href="../logo.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0c;--panel:#151517;--line:#26262a;--txt:#f4f1ec;--mut:#a29d96;--or:#ff7a1a;--or2:#ffb347;--wa:#25d366}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:Archivo,system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:-20% -20% auto;height:60vh;background:radial-gradient(closest-side,rgba(255,122,26,.25),transparent);pointer-events:none}
+.wrap{max-width:640px;margin:0 auto;padding:18px 16px 60px;position:relative}
+.top{display:flex;align-items:center;gap:12px}
+.top img{width:56px;height:56px;border-radius:12px}
+.top b{font-size:13px;letter-spacing:.16em;color:var(--or2)}
+h1{font-size:28px;font-weight:900;line-height:1.1;margin:16px 0 6px}
+.lead{color:var(--mut);font-size:15px;line-height:1.45}
+.test{margin-top:12px;font-size:12px;color:#111;background:var(--or2);display:inline-block;padding:5px 10px;border-radius:99px;font-weight:700}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px;margin-top:16px}
+.step.off{opacity:.45;pointer-events:none}
+.num{font-size:12px;letter-spacing:.14em;color:var(--or2);font-weight:700}
+h2{font-size:19px;font-weight:900;margin:4px 0 12px}
+.opts{display:grid;gap:8px}
+.o3{grid-template-columns:repeat(3,1fr)}
+.opt{border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;cursor:pointer;background:#0f0f11;font:inherit;color:var(--txt);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
+.opt .e{font-size:26px}
+.opt small{color:var(--mut);font-weight:500;font-size:12px}
+.opt.sel{border-color:var(--or);background:rgba(255,122,26,.12)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.opt.wide{flex-direction:row;justify-content:space-between;text-align:left}
+.rec{width:100%;padding:18px;border-radius:16px;border:0;font:inherit;font-weight:900;font-size:18px;cursor:pointer;background:linear-gradient(145deg,var(--or2),var(--or));color:#111;display:flex;align-items:center;justify-content:center;gap:10px}
+.rec.on{background:#ff3b30;color:#fff;animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,59,48,.6)}70%{box-shadow:0 0 0 16px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}
+.timer{font-size:13px;color:var(--mut);text-align:center;margin-top:8px}
+.bar{height:6px;background:#222;border-radius:9px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--or)}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.f{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f0f11;cursor:pointer;font:inherit;color:var(--txt);text-align:left}
+.f b{display:block;font-size:14px}.f span{font-size:12px;color:var(--mut)}
+.f.sel{border-color:var(--or);background:rgba(255,122,26,.12)}
+.f.soon{opacity:.5;cursor:default}
+.pitch{grid-column:1/-1;border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f0f11}
+.pitch input{width:100%;accent-color:var(--or);margin-top:8px}
+.pitch .row span{font-size:12px;color:var(--mut)}
+label.fld{display:block;font-size:13px;color:var(--mut);margin:12px 0 6px}
+input[type=text],input[type=date]{width:100%;background:#0f0f11;border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:12px;font:inherit;font-size:16px}
+input[type=date]{color-scheme:dark}
+.btn2{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:1px solid var(--or);background:transparent;color:var(--or2);font:inherit;font-weight:900;font-size:16px;cursor:pointer}
+audio{width:100%;margin-top:12px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--mut);line-height:1.4;margin-top:14px}
+.consent input{margin-top:3px;accent-color:var(--or);width:18px;height:18px;flex:none}
+.wa{width:100%;margin-top:14px;padding:18px;border-radius:16px;border:0;font:inherit;font-weight:900;font-size:18px;cursor:pointer;background:var(--wa);color:#05290f;display:flex;align-items:center;justify-content:center;gap:10px}
+.wa:disabled{opacity:.4;cursor:default}
+.wa svg{width:26px;height:26px;fill:#05290f}
+.note{font-size:12px;color:var(--mut);margin-top:10px;line-height:1.4}
+.err{color:#ff8a80;font-size:13px;margin-top:8px}
+.busy{font-size:13px;color:var(--or2);margin-top:8px}
+.done{display:none;text-align:center}
+.done .code{font-size:32px;font-weight:900;letter-spacing:.12em;color:var(--or2);margin:10px 0}
+.pitch[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" style="text-decoration:none;color:inherit"><div class="top"><img src="../logo.jpg" alt=""><b>ONDA SONIKA</b></div></a>
+  <h1>Felicita a tu persona especial 🎉</h1>
+  <p class="lead">Graba tu mensaje con tu voz, ponle música y lo emitimos en ONDA SONIKA el día que elijas. Gratis.</p>
+
+  <section class="step" id="s1">
+    <div class="num">PASO 1</div><h2>¿Qué celebramos?</h2>
+    <div class="opts o3" id="motivos">
+      <button class="opt" data-m="cumple"><span class="e">🎂</span>Cumpleaños</button>
+      <button class="opt" data-m="aniversario"><span class="e">💍</span>Aniversario</button>
+      <button class="opt" data-m="amor"><span class="e">❤️</span>Amor</button>
+    </div>
+  </section>
+
+  <section class="step off" id="s2">
+    <div class="num">PASO 2</div><h2>Elige la música</h2>
+    <div class="opts" id="canciones"></div>
+    <audio id="songPrev" controls preload="none" hidden></audio>
+  </section>
+
+  <section class="step off" id="s3">
+    <div class="num">PASO 3</div><h2>Graba tu mensaje</h2>
+    <p class="note" id="recHint" style="margin:-6px 0 12px">Máximo 45 segundos. Habla cerca del móvil.</p>
+    <button class="rec" id="rec">🎙️ Pulsa para grabar</button>
+    <div class="bar"><i id="recBar"></i></div>
+    <div class="timer" id="recTime">0 / 45 s</div>
+    <div class="err" id="recErr"></div>
+  </section>
+
+  <section class="step off" id="s4">
+    <div class="num">PASO 4</div><h2>Retoca tu voz</h2>
+    <div class="filters">
+      <button class="f sel" data-f="breath"><b>😮‍💨 Quitar respiraciones</b><span>Quita el aire al coger aliento</span></button>
+      <button class="f" data-f="clean"><b>✨ Limpiar voz</b><span>Quita ruido de fondo</span></button>
+      <button class="f" data-f="radio"><b>📻 Voz de radio</b><span>Como un locutor</span></button>
+      <button class="f" data-f="echo"><b>🏟️ Eco de estudio</b><span>Reverberación suave</span></button>
+      <button class="f soon" data-f="tune" id="tuneBtn"><b>🎤 Autotune</b><span id="tuneTxt">Muy pronto</span></button>
+      <div class="pitch"><div class="row"><b style="font-size:14px">🎚️ Tono de voz</b><span id="pv">Normal</span></div>
+        <input type="range" id="pitch" min="-6" max="6" step="1" value="0">
+        <div class="row"><span>Más grave</span><span>Más agudo</span></div></div>
+      <div class="pitch" id="balBox"><div class="row"><b style="font-size:14px">🔊 Voz o música</b><span id="bv">Equilibrado</span></div>
+        <input type="range" id="bal" min="-5" max="5" step="1" value="0">
+        <div class="row"><span>Más música</span><span>Más voz</span></div></div>
+    </div>
+    <button class="btn2" id="listen">▶ Escuchar cómo queda</button>
+    <div class="busy" id="busy" hidden>Preparando tu audio…</div>
+    <audio id="out" controls hidden></audio>
+  </section>
+
+  <section class="step off" id="s5">
+    <div class="num">PASO 5</div><h2>¿Cuándo lo ponemos?</h2>
+    <label class="fld" for="dia">Día (mínimo 5 días desde hoy)</label>
+    <input type="date" id="dia">
+    <label class="fld">Franja</label>
+    <div class="opts o3" id="franjas">
+      <button class="opt" data-fr="Mañana 10-13">Mañana<small>10 – 13 h</small></button>
+      <button class="opt" data-fr="Tarde 17-20">Tarde<small>17 – 20 h</small></button>
+      <button class="opt" data-fr="Noche 20-23">Noche<small>20 – 23 h</small></button>
+    </div>
+    <label class="fld" for="de">Tu nombre</label>
+    <input type="text" id="de" maxlength="40" placeholder="Ej.: Laura">
+    <label class="fld" for="para">¿Para quién es?</label>
+    <input type="text" id="para" maxlength="40" placeholder="Ej.: mi madre, Carmen">
+    <label class="fld" for="tel">Tu móvil (WhatsApp) — para contestarte</label>
+    <input type="text" id="tel" inputmode="tel" maxlength="16" placeholder="Ej.: 600 123 456">
+  </section>
+
+  <section class="step off" id="s6">
+    <div class="num">PASO 6</div><h2>Envíanoslo</h2>
+    <label class="consent"><input type="checkbox" id="ok">
+      <span>Acepto que ONDA SONIKA emita mi grabación en la radio y guarde mi voz, mi nombre y mi teléfono solo para gestionar esta felicitación. Puedo pedir que se borren cuando quiera.</span></label>
+    <button class="wa" id="send" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2 .7 2.8.6.4-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z"/></svg>
+      Enviar por WhatsApp</button>
+    <div class="err" id="sendErr"></div>
+    <p class="note">Escucharemos tu felicitación y te contestaremos por WhatsApp. Si la aceptamos, te mandaremos un enlace para que te quedes tu audio.</p>
+  </section>
+
+  <section class="step done" id="done">
+    <h2>¡Recibido! 🎉</h2>
+    <p class="lead">Tu código de felicitación es</p>
+    <div class="code" id="code"></div>
+    <p class="note" id="doneNote"></p>
+    <a id="dl" class="btn2" style="display:block;text-decoration:none;text-align:center">⬇ Descargar mi audio (prueba)</a>
+  </section>
+</div>
+
+<script>
+/* ===== CONFIGURACIÓN ===== */
+const WA_NUMERO = "34651683004";           // móvil del despacho, ej. "34600000000". Vacío = modo prueba
+const API = "https://radio.ondasonika.com:9443";                 // servidor de felicitaciones, ej. "https://radio.ondasonika.com:8448". Vacío = modo prueba
+const MAX_SEG = 45, ANTELACION_DIAS = 5;
+const CANCIONES = {
+  cumple:      [{t:"Cumpleaños feliz · Parchís",f:"musica/cumple-parchis.mp3"},
+                {t:"Per molts anys · Club Super 3",f:"musica/cumple-per-molts-anys.mp3"},
+                {t:"Cumpleaños feliz · tradicional",f:"musica/cumple-tradicional.mp3"},
+                {t:"Feliz cumpleaños · cantado",f:"musica/cumple-cantado.mp3"},
+                {t:"Cumpleaños feliz · versión 2",f:"musica/cumple-feliz-2.mp3"},
+                {t:"Cumpleaños feliz · Luisma (Aída) 😂",f:"musica/cumple-luisma-aida.mp3"}],
+  aniversario: [{t:"Romántica (provisional)",f:"musica/provisional-romantica.mp3"}],
+  amor:        [{t:"Romántica (provisional)",f:"musica/provisional-romantica.mp3"},{t:"Fiesta (provisional)",f:"musica/provisional-fiesta.mp3"}]
+};
+const MOTIVO_TXT = {cumple:"Cumpleaños",aniversario:"Aniversario",amor:"Amor"};
+/* ========================== */
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const S={motivo:null,cancion:null,own:false,voice:null,tuned:null,filters:new Set(['breath']),pitch:0,bal:0,franja:null,mix:null,code:null};
+let AC; const ac=()=>AC||(AC=new (window.AudioContext||window.webkitAudioContext)());
+const unlock=n=>$('#s'+n).classList.remove('off');
+const pick=(btns,b)=>{btns.forEach(x=>x.classList.toggle('sel',x===b))};
+
+/* Paso 1 */
+$$('#motivos .opt').forEach(b=>b.onclick=()=>{pick($$('#motivos .opt'),b);S.motivo=b.dataset.m;renderSongs();unlock(2);});
+
+/* Paso 2 */
+function renderSongs(){
+  const list=CANCIONES[S.motivo]||[];
+  $('#canciones').innerHTML=list.map((c,i)=>`<button class="opt wide" data-i="${i}"><span>🎵 ${c.t}</span><small>▶ escuchar</small></button>`).join('')+
+   `<button class="opt wide" data-i="own"><span>🎧 Sin canción de fondo</span><small>grabo con mi música</small></button>`;
+  S.cancion=null;S.own=false;
+  $$('#canciones .opt').forEach(b=>b.onclick=()=>{pick($$('#canciones .opt'),b);const p=$('#songPrev');
+    if(b.dataset.i==='own'){S.own=true;S.cancion=null;p.pause();p.hidden=true;$('#balBox').hidden=true;$('#recHint').textContent='Pon tu música de fondo (en otro aparato) y graba encima. Máximo 45 segundos.';}
+    else{S.own=false;S.cancion=list[+b.dataset.i];$('#balBox').hidden=false;p.src=S.cancion.f;p.hidden=false;p.play().catch(()=>{});$('#recHint').textContent='Máximo 45 segundos. Habla cerca del móvil.';}
+    S.mix=null;unlock(3);});
+}
+
+/* Paso 3: grabar */
+let rec=null,stream=null,chunks=[],t0=0,tick=null;
+$('#rec').onclick=async()=>{
+  $('#recErr').textContent='';
+  if(rec&&rec.state==='recording'){rec.stop();return;}
+  $('#songPrev').pause();
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!S.own,noiseSuppression:!S.own,autoGainControl:!S.own}});
+  }catch(e){$('#recErr').textContent='No podemos usar el micrófono. Revisa que has dado permiso al navegador.';return;}
+  ac().resume();
+  chunks=[];rec=new MediaRecorder(stream);
+  rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  rec.onstop=async()=>{clearInterval(tick);stream.getTracks().forEach(t=>t.stop());
+    $('#rec').classList.remove('on');$('#rec').textContent='🎙️ Volver a grabar';
+    try{const buf=await new Blob(chunks,{type:rec.mimeType}).arrayBuffer();S.voice=await decode(buf);S.tuned=null;S.mix=null;if(S.filters.has('tune')){S.filters.delete('tune');$('#tuneBtn').classList.remove('sel');}
+      $('#recTime').textContent=`Grabado: ${S.voice.duration.toFixed(0)} s`;unlock(4);unlock(5);unlock(6);check();
+      $('#listen').scrollIntoView({behavior:'smooth',block:'center'});}
+    catch(e){$('#recErr').textContent='No se ha podido leer la grabación. Prueba otra vez.';}
+  };
+  rec.start();t0=Date.now();$('#rec').classList.add('on');$('#rec').textContent='⏹️ Parar';
+  tick=setInterval(()=>{const s=(Date.now()-t0)/1000;$('#recBar').style.width=Math.min(100,s/MAX_SEG*100)+'%';$('#recTime').textContent=`${Math.floor(s)} / ${MAX_SEG} s`;if(s>=MAX_SEG)rec.stop();},200);
+};
+function decode(buf){return new Promise((res,rej)=>ac().decodeAudioData(buf,res,rej));}
+
+/* Paso 4: filtros */
+$$('.f[data-f]:not(.soon)').forEach(b=>b.onclick=()=>{const f=b.dataset.f;S.filters.has(f)?S.filters.delete(f):S.filters.add(f);b.classList.toggle('sel');S.mix=null;});
+$('#bal').oninput=e=>{S.bal=+e.target.value;$('#bv').textContent=S.bal===0?'Equilibrado':(S.bal>0?'Más voz +'+S.bal:'Más música +'+(-S.bal));S.mix=null;};
+if(API){$('#tuneBtn').classList.remove('soon');$('#tuneTxt').textContent='Afina tu voz';}
+$('#tuneBtn').onclick=async()=>{if(!API||!S.voice)return;const b=$('#tuneBtn');
+  if(S.filters.has('tune')){S.filters.delete('tune');b.classList.remove('sel');S.mix=null;return;}
+  if(!S.tuned){$('#tuneTxt').textContent='Afinando… (unos segundos)';
+    try{const r=await fetch(API+'/api/tune',{method:'POST',body:wav(S.voice,S.voice.sampleRate)});if(!r.ok)throw 0;S.tuned=await decode(await r.arrayBuffer());}
+    catch(e){$('#tuneTxt').textContent='No disponible ahora';return;}
+    $('#tuneTxt').textContent='Afina tu voz';}
+  S.filters.add('tune');b.classList.add('sel');S.mix=null;};
+$('#pitch').oninput=e=>{S.pitch=+e.target.value;$('#pv').textContent=S.pitch===0?'Normal':(S.pitch>0?'+':'')+S.pitch;S.mix=null;};
+$('#listen').onclick=async()=>{if(!S.voice)return;$('#busy').hidden=false;
+  try{const out=await build();$('#out').src=URL.createObjectURL(out.blob);$('#out').hidden=false;$('#out').play().catch(()=>{});}
+  catch(e){console.error(e);$('#busy').textContent='No se ha podido preparar el audio.';return;}
+  $('#busy').hidden=true;check();};
+
+/* --- procesado de audio --- */
+const SR=44100;
+function mono(b){const d=new Float32Array(b.length);for(let c=0;c<b.numberOfChannels;c++){const x=b.getChannelData(c);for(let i=0;i<d.length;i++)d[i]+=x[i]/b.numberOfChannels;}return d;}
+function resample(d,from,to){if(from===to)return d;const n=Math.round(d.length*to/from),o=new Float32Array(n),r=from/to;for(let i=0;i<n;i++){const p=i*r,k=Math.floor(p),f=p-k;o[i]=(d[k]||0)*(1-f)+(d[k+1]||0)*f;}return o;}
+/* Quitar respiraciones: tramos sin tono (no voz), de energía media-baja y de más de 120 ms → se bajan al 10 % */
+function deBreath(d){const N=Math.round(SR*.02),fr=Math.floor(d.length/N),rms=new Float32Array(fr),vo=new Uint8Array(fr);
+  for(let k=0;k<fr;k++){const o=k*N;let s=0;for(let i=0;i<N;i++){const x=d[o+i];s+=x*x;}rms[k]=Math.sqrt(s/N);
+    // ¿tiene tono? autocorrelación normalizada entre 70 y 500 Hz
+    let best=0;const e0=s+1e-9;for(let lag=Math.floor(SR/500);lag<=Math.floor(SR/70);lag+=2){let c=0,e1=0;for(let i=0;i<N;i++){const a=d[o+i],b=d[o+i+lag]||0;c+=a*b;e1+=b*b;}const r=c/Math.sqrt(e0*(e1+1e-9));if(r>best)best=r;}
+    vo[k]=best>.55?1:0;}
+  const sp=[...rms].filter((_,k)=>vo[k]).sort((a,b)=>a-b),speech=sp.length?sp[Math.floor(sp.length*.5)]:0;if(!speech)return d;
+  const lo=[...rms].sort((a,b)=>a-b)[Math.floor(fr*.05)]||0;
+  const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*.45&&rms[k]>lo*1.6)?1:0;
+  const g=new Float32Array(fr).fill(1);
+  for(let k=0;k<fr;){if(!cand[k]){k++;continue;}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=120)for(let q=k;q<j;q++)g[q]=.1;k=j;}
+  // ganancia suave muestra a muestra
+  let cur=1;for(let k=0;k<fr;k++){const t=g[k];for(let i=0;i<N;i++){cur+=(t-cur)*.004;d[k*N+i]*=cur;}}
+  return d;}
+function gate(d){const N=1024,fr=Math.floor(d.length/N),rms=[];for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v;}rms.push(Math.sqrt(s/N));}
+  const sorted=[...rms].sort((a,b)=>a-b),floor=sorted[Math.floor(sorted.length*.1)]||0,th=floor*3+1e-4;let g=1;
+  for(let k=0;k<fr;k++){const tgt=rms[k]>th?1:.12;for(let i=0;i<N;i++){g+= (tgt-g)*(tgt>g?.02:.0015);d[k*N+i]*=g;}}return d;}
+function pitchShift(d,semi){if(!semi)return d;const r=Math.pow(2,semi/12),N=2048,Hs=512,Ha=Hs/r,w=new Float32Array(N);for(let i=0;i<N;i++)w[i]=.5-.5*Math.cos(2*Math.PI*i/N);
+  const outLen=Math.floor(d.length*r)+N,st=new Float32Array(outLen),nrm=new Float32Array(outLen);
+  for(let k=0;;k++){const ip=Math.floor(k*Ha),op=k*Hs;if(ip+N>d.length||op+N>outLen)break;for(let i=0;i<N;i++){st[op+i]+=d[ip+i]*w[i];nrm[op+i]+=w[i];}}
+  for(let i=0;i<outLen;i++)if(nrm[i]>1e-3)st[i]/=nrm[i];
+  const o=new Float32Array(d.length);for(let i=0;i<o.length;i++){const p=i*r,k=Math.floor(p),f=p-k;o[i]=(st[k]||0)*(1-f)+(st[k+1]||0)*f;}return o;}
+function normalize(d,peak=.89){let m=0;for(const v of d)m=Math.max(m,Math.abs(v));if(m>0)for(let i=0;i<d.length;i++)d[i]*=peak/m;return d;}
+function impulse(ctx,sec=1.4){const n=Math.floor(SR*sec),b=ctx.createBuffer(2,n,SR);for(let c=0;c<2;c++){const x=b.getChannelData(c);for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);}return b;}
+let songCache={};
+async function loadSong(f){if(songCache[f])return songCache[f];const r=await fetch(f);songCache[f]=await decode(await r.arrayBuffer());return songCache[f];}
+
+async function build(){
+  const src=(S.filters.has('tune')&&S.tuned)?S.tuned:S.voice;
+  let v=resample(mono(src),src.sampleRate,SR);
+  // recortar silencios de inicio/fin
+  if(S.filters.has('breath'))v=deBreath(v);
+  let a=0,b=v.length-1;while(a<b&&Math.abs(v[a])<.01)a++;while(b>a&&Math.abs(v[b])<.01)b--;v=v.slice(Math.max(0,a-SR*.15),Math.min(v.length,b+SR*.3));
+  if(S.filters.has('clean'))v=gate(v);
+  v=pitchShift(v,S.pitch);
+  v=normalize(v);
+  const pre=S.own?0.3:2.5, post=S.own?0.5:3, vd=v.length/SR, total=pre+vd+post;
+  const ctx=new OfflineAudioContext(1,Math.ceil(total*SR),SR);
+  const vb=ctx.createBuffer(1,v.length,SR);vb.copyToChannel?vb.copyToChannel(v,0):vb.getChannelData(0).set(v);
+  const vs=ctx.createBufferSource();vs.buffer=vb;let node=vs;
+  if(S.filters.has('clean')){const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=9000;node.connect(hp);hp.connect(lp);node=lp;}
+  if(S.filters.has('radio')){const ls=ctx.createBiquadFilter();ls.type='lowshelf';ls.frequency.value=160;ls.gain.value=4;const pk=ctx.createBiquadFilter();pk.type='peaking';pk.frequency.value=3000;pk.Q.value=.9;pk.gain.value=5;const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=80;
+    node.connect(hp);hp.connect(ls);ls.connect(pk);node=pk;}
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=S.filters.has('radio')?-28:-18;comp.ratio.value=S.filters.has('radio')?5:3;comp.attack.value=.005;comp.release.value=.2;node.connect(comp);node=comp;
+  const vg=ctx.createGain();vg.gain.value=(S.filters.has('radio')?1.5:1.25)*(S.cancion?Math.pow(10,S.bal*1.5/20):1);node.connect(vg);
+  if(S.filters.has('echo')){const cv=ctx.createConvolver();cv.buffer=impulse(ctx);const wet=ctx.createGain();wet.gain.value=.28;vg.connect(cv);cv.connect(wet);wet.connect(ctx.destination);}
+  vg.connect(ctx.destination);vs.start(pre);
+  if(S.cancion){const sb=await loadSong(S.cancion.f);const ss=ctx.createBufferSource();ss.buffer=sb;ss.loop=true;const sg=ctx.createGain();ss.connect(sg);sg.connect(ctx.destination);
+    const g=sg.gain,lo=.18*Math.pow(10,-S.bal*2.5/20),hi=.8;g.setValueAtTime(hi,0);g.setValueAtTime(hi,pre-.6);g.linearRampToValueAtTime(lo,pre);g.setValueAtTime(lo,pre+vd);g.linearRampToValueAtTime(hi,pre+vd+.8);g.setValueAtTime(hi,total-1.6);g.linearRampToValueAtTime(0,total);ss.start(0);}
+  const out=await ctx.startRendering();
+  const blob=wav(out);S.mix={blob,dur:total};return S.mix;}
+function wav(b,rate){const R=rate||SR,ch=b.numberOfChannels,n=b.length,buf=new ArrayBuffer(44+n*ch*2),v=new DataView(buf);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0));},u32=x=>{v.setUint32(o,x,true);o+=4},u16=x=>{v.setUint16(o,x,true);o+=2};
+  w('RIFF');u32(36+n*ch*2);w('WAVE');w('fmt ');u32(16);u16(1);u16(ch);u32(R);u32(R*ch*2);u16(ch*2);u16(16);w('data');u32(n*ch*2);
+  const d=[...Array(ch)].map((_,c)=>b.getChannelData(c));let m=0;for(const x of d)for(const s of x)m=Math.max(m,Math.abs(s));const k=m>.98?.98/m:1;
+  for(let i=0;i<n;i++)for(let c=0;c<ch;c++){v.setInt16(o,Math.max(-1,Math.min(1,d[c][i]*k))*32767,true);o+=2;}return new Blob([buf],{type:'audio/wav'});}
+
+/* Paso 5 */
+const minD=new Date();minD.setDate(minD.getDate()+ANTELACION_DIAS);const iso=d=>d.toISOString().slice(0,10);
+$('#dia').min=iso(minD);$('#dia').value=iso(minD);
+$$('#franjas .opt').forEach(b=>b.onclick=()=>{pick($$('#franjas .opt'),b);S.franja=b.dataset.fr;check();});
+['#dia','#de','#para','#tel','#ok'].forEach(s=>$(s).addEventListener('input',check));$('#ok').addEventListener('change',check);
+
+/* Paso 6 */
+function check(){const okDate=$('#dia').value&&$('#dia').value>=$('#dia').min;
+  $('#send').disabled=!(S.voice&&S.motivo&&(S.cancion||S.own)&&S.franja&&okDate&&$('#de').value.trim()&&$('#para').value.trim()&&$('#tel').value.replace(/\D/g,'').length>=9&&$('#ok').checked);}
+$('#send').onclick=async()=>{$('#sendErr').textContent='';
+  if(!S.mix){$('#sendErr').textContent='Antes, escucha cómo queda (paso 4).';$('#listen').scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const meta={motivo:S.motivo,franja:S.franja,fecha:$('#dia').value,de:$('#de').value.trim(),para:$('#para').value.trim(),tel:$('#tel').value,cancion:S.cancion?S.cancion.t:'',consent:true};
+  if(API){$('#send').disabled=true;$('#send').lastChild.textContent=' Enviando…';
+    try{const r=await fetch(API+'/api/dedica',{method:'POST',headers:{'X-Meta':btoa(unescape(encodeURIComponent(JSON.stringify(meta))))},body:S.mix.blob});
+      const j=await r.json();if(!r.ok)throw new Error(j.detail||'Error');S.code=j.code;}
+    catch(e){$('#sendErr').textContent='No se ha podido enviar: '+e.message+'. Prueba otra vez.';$('#send').disabled=false;$('#send').lastChild.textContent=' Enviar por WhatsApp';return;}
+  } else S.code=Math.random().toString(36).slice(2,8).toUpperCase();
+  const d=new Date($('#dia').value+'T12:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  const txt=`Hola ONDA SONIKA 🎉 Mi felicitación: código ${S.code}\n${MOTIVO_TXT[S.motivo]} para ${$('#para').value.trim()}\n${d} · ${S.franja}\nDe: ${$('#de').value.trim()}`;
+  $('#code').textContent=S.code;$('#dl').href=URL.createObjectURL(S.mix.blob);$('#dl').download=`felicitacion-${S.code}.wav`;
+  $('#done').style.display='block';
+  if(API)$('#dl').style.display='none';
+  if(WA_NUMERO&&API){location.href=`https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(txt)}`;$('#doneNote').textContent='Se ha abierto WhatsApp con tu mensaje: envíalo y listo.';}
+  else{$('#doneNote').textContent='Versión de prueba: todavía no se envía nada. Este es el mensaje que llegaría por WhatsApp:\n\n'+txt;$('#doneNote').style.whiteSpace='pre-line';}
+  $('#done').scrollIntoView({behavior:'smooth'});};
+</script>
+</body>
+</html>
