@@ -153,7 +153,7 @@ audio{width:100%;margin-top:12px}
 
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const WA_NUMERO = "";           // móvil del despacho, ej. "34600000000". Vacío = modo prueba
+const WA_NUMERO = "34651683004";           // móvil del despacho, ej. "34600000000". Vacío = modo prueba
 const API = "";                 // servidor de felicitaciones, ej. "https://radio.ondasonika.com:8448". Vacío = modo prueba
 const MAX_SEG = 45, ANTELACION_DIAS = 5;
 const CANCIONES = {
@@ -313,7 +313,7 @@ $('#send').onclick=async()=>{$('#sendErr').textContent='';
   $('#code').textContent=S.code;$('#dl').href=URL.createObjectURL(S.mix.blob);$('#dl').download=`felicitacion-${S.code}.wav`;
   $('#done').style.display='block';
   if(API)$('#dl').style.display='none';
-  if(WA_NUMERO){location.href=`https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(txt)}`;$('#doneNote').textContent='Se ha abierto WhatsApp con tu mensaje: envíalo y listo.';}
+  if(WA_NUMERO&&API){location.href=`https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(txt)}`;$('#doneNote').textContent='Se ha abierto WhatsApp con tu mensaje: envíalo y listo.';}
   else{$('#doneNote').textContent='Versión de prueba: todavía no se envía nada. Este es el mensaje que llegaría por WhatsApp:\n\n'+txt;$('#doneNote').style.whiteSpace='pre-line';}
   $('#done').scrollIntoView({behavior:'smooth'});};
 </script>
