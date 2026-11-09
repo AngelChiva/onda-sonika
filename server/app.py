@@ -114,7 +114,7 @@ async def dedica(req: Request):
     ok, motivo = revisar(texto)
     m["texto"] = texto
     if not ok:
-        m.update(estado="rechazada", motivo=motivo); save_meta(m)   # solo se guarda el texto, no el audio
+        m.update(estado="rechazada", razon=motivo); save_meta(m)   # solo se guarda el texto, no el audio
         msg = ("No hemos entendido bien tu mensaje. Grábalo otra vez hablando cerca del móvil."
                if motivo.startswith("no se entiende") else MSG)
         raise HTTPException(422, msg)
@@ -168,7 +168,7 @@ def admin_page():
         elif st in ("error", "pendiente"):
             btns = f'<p class="err">{esc(m.get("error",""))}</p><button class="yes" onclick="prog(\'{m["code"]}\')">Programar ahora</button>'
         elif st == "rechazada":
-            btns = f'<p class="st rechazada">❌ RECHAZADA AUTOMÁTICAMENTE · {esc(m.get("motivo",""))}</p>'
+            btns = f'<p class="st rechazada">❌ RECHAZADA AUTOMÁTICAMENTE · {esc(m.get("razon",""))}</p>'
         else:
             btns = f'<p class="st">{st.upper()}</p>'
         audio = f'<audio controls preload="none" src="/admin/audio/{m["code"]}.mp3"></audio>' if (DATA / "pend" / m["code"] / "audio.mp3").exists() else ""
