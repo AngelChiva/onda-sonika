@@ -169,8 +169,8 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
   catch(_){/* si el servidor de límites no responde, se pide igual */}
   try{const r=await fetch(API+"/api/station/"+ST+"/request/"+b.dataset.id,{method:"POST"});const j=await r.json().catch(()=>({}));
    if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en las próximas canciones de ONDA SONIKA 📻"+(q===0?" (Hoy ya no te quedan más peticiones.)":q===1?" (Te queda 1 petición hoy.)":"")}
-   else{perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción ha sonado o se ha pedido hace poco. Prueba con otra o más tarde.")}}
-  catch(_){perm({...who,cancelar:1}).catch(()=>{});fail(b,"No se ha podido enviar. Prueba otra vez.")}busy=0});
+   else{perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}}
+  catch(_){perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}busy=0});
 })();
 if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADORES.map(s=>{
  const h=s.url||(s.wa?"https://wa.me/"+s.wa:(s.tel?"tel:"+s.tel:""));
