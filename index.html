@@ -52,6 +52,17 @@ h2{font-size:13px;letter-spacing:.16em;color:var(--mut);margin:30px 0 12px;font-
 @media(max-width:380px){.wa,.spons{grid-template-columns:1fr}}
 footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
 .tk{margin-top:8px}.tkbtn{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;background:#000;border:1px solid #2a2a2e;color:#fff;text-decoration:none}.tkbtn b{display:block;font-size:17px}.tkbtn small{color:#a29d96;font-size:13px}.tkbtn:hover{border-color:#ff7a1a}
+.req{background:var(--panel,#151517);border:1px solid #26262a;border-radius:18px;padding:16px}
+.rq-lead{color:#a29d96;font-size:14px;margin-bottom:10px}.rq-lead b{color:#ffb347}
+#rqQ{width:100%;background:#0f0f11;border:1px solid #2a2a2e;color:#f4f1ec;border-radius:12px;padding:13px 14px;font:inherit;font-size:16px}
+#rqQ:focus{outline:none;border-color:#ff7a1a}
+.rq-list{margin-top:8px}.rq-it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid #222}
+.rq-it b{display:block;font-size:15px}.rq-it span{font-size:13px;color:#a29d96}
+.rq-it button{flex:none;border:0;border-radius:99px;padding:9px 16px;font:inherit;font-weight:800;background:linear-gradient(145deg,#ffb347,#ff7a1a);color:#111;cursor:pointer}
+.rq-it button:disabled{opacity:.6}
+.rq-msg{font-size:14px;margin-top:10px}.rq-msg.ok{color:#25d366}.rq-msg.err{color:#ff8a80}
+.rq-miss{margin-top:12px;font-size:14px;color:#a29d96}.rq-miss b{color:#f4f1ec}
+.rq-wa{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:12px;background:#25d366;color:#05290f;font-weight:800;text-decoration:none}
 </style>
 </head>
 <body>
@@ -73,13 +84,18 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
   <h2>PROGRAMACIÓN</h2>
   <div class="grid" id="parrilla"></div>
 
-  <section id="pide" hidden>
+  <section id="pide">
     <h2>PIDE TU CANCIÓN</h2>
-    <div class="wa">
-      <a id="waCancion" target="_blank" rel="noopener"><i>🎵</i><b>Pedir canción</b><span>Por WhatsApp</span></a>
-      <a id="waCumple" target="_blank" rel="noopener"><i>🎂</i><b>Felicitar un cumple</b><span>Lo decimos en antena</span></a>
+    <div class="req">
+      <p class="rq-lead">🎵 Busca tu canción y pídela: <b>suena en unos minutos</b>.</p>
+      <input type="search" id="rqQ" placeholder="Busca por canción o artista…" autocomplete="off">
+      <div id="rqList" class="rq-list"></div>
+      <p class="rq-msg" id="rqMsg"></p>
+      <div class="rq-miss" id="rqMiss" hidden>
+        <p>¿No la encuentras? <b>Pídenosla</b> y la buscamos para la radio.</p>
+        <a class="rq-wa" id="rqWa" target="_blank" rel="noopener">💬 Pedirla por WhatsApp</a>
+      </div>
     </div>
-    <p class="note" id="horaDed"></p>
   </section>
 
   <section id="patro" hidden>
@@ -117,10 +133,25 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
  {n:"Chivatazio",d:"Análisis deportivo",url:"https://chivatazio.com",logo:"data:image/jpeg;base64,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",bg:"#111"}
 ];
 // ===================================
-if(WHATSAPP){const w=t=>"https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(t);
- document.getElementById("waCancion").href=w("Hola ONDA SONIKA! Me pones esta canción: ");
- document.getElementById("waCumple").href=w("Hola ONDA SONIKA! Quiero felicitar a ___ que cumple ___ años. De parte de: ");
- document.getElementById("horaDed").textContent=HORA_DEDICATORIAS;document.getElementById("pide").hidden=false}
+/* ===== Pedir canción (sistema de peticiones de AzuraCast) ===== */
+(function(){const API="https://radio.ondasonika.com",ST="onda_sonika",WA="34651683004";let L=[],busy=0;
+ const N=t=>(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+ const esc=t=>String(t||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ const q=document.getElementById("rqQ"),box=document.getElementById("rqList"),msg=document.getElementById("rqMsg"),miss=document.getElementById("rqMiss"),wa=document.getElementById("rqWa");
+ fetch(API+"/api/station/"+ST+"/requests").then(r=>r.json()).then(j=>{L=(Array.isArray(j)?j:j.rows||[]).map(x=>({id:x.request_id,a:x.song.artist,t:x.song.title,k:N(x.song.artist+" "+x.song.title)}))}).catch(()=>{});
+ function draw(){const v=N(q.value.trim());msg.textContent="";
+  wa.href="https://wa.me/"+WA+"?text="+encodeURIComponent("🎵 Hola ONDA SONIKA, ¿me ponéis esta canción? "+(q.value.trim()||""));
+  if(v.length<2){box.innerHTML="";miss.hidden=true;return}
+  const r=L.filter(x=>v.split(/\s+/).every(w=>x.k.includes(w))).slice(0,8);
+  box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><button data-id="${x.id}">Pedir</button></div>`).join("");
+  miss.hidden=false}
+ q.addEventListener("input",draw);
+ box.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||busy)return;busy=1;b.disabled=true;b.textContent="…";
+  try{const r=await fetch(API+"/api/station/"+ST+"/request/"+b.dataset.id,{method:"POST"});const j=await r.json().catch(()=>({}));
+   if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en los próximos minutos en ONDA SONIKA 📻"}
+   else{b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent=(j.formatted_message||j.message||"Ahora no se puede pedir esta canción. Prueba con otra o más tarde.")}}
+  catch(_){b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent="No se ha podido enviar. Prueba otra vez."}busy=0});
+})();
 if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADORES.map(s=>{
  const h=s.url||(s.wa?"https://wa.me/"+s.wa:(s.tel?"tel:"+s.tel:""));
  const x=s.tel?`<span>📞 ${s.tel.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3")}</span>`:(s.wa?"<span>💬 WhatsApp</span>":"");
