@@ -136,17 +136,18 @@ audio{width:100%;margin-top:12px}
       <span>Acepto que ONDA SONIKA emita mi grabación en la radio y guarde mi voz, mi nombre y mi teléfono solo para gestionar esta felicitación. Puedo pedir que se borren cuando quiera.</span></label>
     <button class="wa" id="send" disabled>
       <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2 .7 2.8.6.4-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z"/></svg>
-      Enviar por WhatsApp</button>
+      Enviar felicitación</button>
     <div class="err" id="sendErr"></div>
-    <p class="note">Escucharemos tu felicitación y te contestaremos por WhatsApp. Si la aceptamos, te mandaremos un enlace para que te quedes tu audio.</p>
+    <p class="note">Al enviarla, la revisamos automáticamente en unos segundos. Si cumple las normas (sin insultos, tacos, teléfonos ni direcciones) queda programada en la radio al momento.</p>
   </section>
 
   <section class="step done" id="done">
-    <h2>¡Recibido! 🎉</h2>
-    <p class="lead">Tu código de felicitación es</p>
+    <h2>¡Programada! 🎉</h2>
+    <p class="lead" id="doneLead">Tu código de felicitación es</p>
     <div class="code" id="code"></div>
     <p class="note" id="doneNote"></p>
-    <a id="dl" class="btn2" style="display:block;text-decoration:none;text-align:center">⬇ Descargar mi audio (prueba)</a>
+    <a id="share" class="btn2" style="display:none;text-decoration:none;text-align:center;margin-bottom:10px">📲 Compartir por WhatsApp</a>
+    <a id="dl" class="btn2" style="display:block;text-decoration:none;text-align:center">⬇ Descargar mi audio</a>
   </section>
 </div>
 
@@ -299,21 +300,28 @@ $$('#franjas .opt').forEach(b=>b.onclick=()=>{pick($$('#franjas .opt'),b);S.fran
 /* Paso 6 */
 function check(){const okDate=$('#dia').value&&$('#dia').value>=$('#dia').min;
   $('#send').disabled=!(S.voice&&S.motivo&&(S.cancion||S.own)&&S.franja&&okDate&&$('#de').value.trim()&&$('#para').value.trim()&&$('#tel').value.replace(/\D/g,'').length>=9&&$('#ok').checked);}
-$('#send').onclick=async()=>{$('#sendErr').textContent='';
+async function voz16k(){const src=S.voice,n=Math.ceil(src.duration*16000),c=new OfflineAudioContext(1,n,16000),b=c.createBufferSource();b.buffer=src;b.connect(c.destination);b.start(0);return wav(await c.startRendering(),16000);}
+$('#send').onclick=async()=>{$('#sendErr').textContent='';$('#sendErr').innerHTML='';
   if(!S.mix){$('#sendErr').textContent='Antes, escucha cómo queda (paso 4).';$('#listen').scrollIntoView({behavior:'smooth',block:'center'});return;}
   const meta={motivo:S.motivo,franja:S.franja,fecha:$('#dia').value,de:$('#de').value.trim(),para:$('#para').value.trim(),tel:$('#tel').value,cancion:S.cancion?S.cancion.t:'',consent:true};
-  if(API){$('#send').disabled=true;$('#send').lastChild.textContent=' Enviando…';
-    try{const r=await fetch(API+'/api/dedica',{method:'POST',headers:{'X-Meta':btoa(unescape(encodeURIComponent(JSON.stringify(meta))))},body:S.mix.blob});
-      const j=await r.json();if(!r.ok)throw new Error(j.detail||'Error');S.code=j.code;}
-    catch(e){$('#sendErr').textContent='No se ha podido enviar: '+e.message+'. Prueba otra vez.';$('#send').disabled=false;$('#send').lastChild.textContent=' Enviar por WhatsApp';return;}
+  const lbl=$('#send').lastChild,reset=()=>{$('#send').disabled=false;lbl.textContent=' Enviar felicitación';};
+  let j=null;
+  if(API){$('#send').disabled=true;lbl.textContent=' Revisando tu mensaje…';
+    try{const fd=new FormData();fd.append('meta',JSON.stringify(meta));fd.append('mix',S.mix.blob,'mix.wav');fd.append('voz',await voz16k(),'voz.wav');
+      const r=await fetch(API+'/api/dedica',{method:'POST',body:fd});j=await r.json().catch(()=>({}));
+      if(r.status===422){$('#sendErr').innerHTML='🚫 '+(j.detail||'Tu mensaje incumple las normas.')+'<br><button class="btn2" id="regrab" style="margin-top:10px">🎙️ Grabar otra vez</button>';
+        $('#regrab').onclick=()=>$('#s3').scrollIntoView({behavior:'smooth'});reset();return;}
+      if(!r.ok)throw new Error(j.detail||'Error');S.code=j.code;}
+    catch(e){$('#sendErr').textContent='No se ha podido enviar: '+e.message+'. Prueba otra vez.';reset();return;}
   } else S.code=Math.random().toString(36).slice(2,8).toUpperCase();
-  const d=new Date($('#dia').value+'T12:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
-  const txt=`Hola ONDA SONIKA 🎉 Mi felicitación: código ${S.code}\n${MOTIVO_TXT[S.motivo]} para ${$('#para').value.trim()}\n${d} · ${S.franja}\nDe: ${$('#de').value.trim()}`;
   $('#code').textContent=S.code;$('#dl').href=URL.createObjectURL(S.mix.blob);$('#dl').download=`felicitacion-${S.code}.wav`;
-  $('#done').style.display='block';
-  if(API)$('#dl').style.display='none';
-  if(WA_NUMERO&&API){location.href=`https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(txt)}`;$('#doneNote').textContent='Se ha abierto WhatsApp con tu mensaje: envíalo y listo.';}
-  else{$('#doneNote').textContent='Versión de prueba: todavía no se envía nada. Este es el mensaje que llegaría por WhatsApp:\n\n'+txt;$('#doneNote').style.whiteSpace='pre-line';}
+  $('#done').style.display='block';$('#send').disabled=true;lbl.textContent=' Enviada ✓';
+  if(j&&j.estado==='aceptada'){
+    $('#doneNote').textContent=`Sonará en ONDA SONIKA el ${j.fecha}, por la ${j.franja}. ¡Avisa a ${meta.para} para que no se la pierda! 📻`;
+    if(j.enlace){$('#dl').href=j.enlace;$('#dl').removeAttribute('download');$('#dl').textContent='🎧 Escuchar y descargar mi felicitación';
+      $('#share').href='https://wa.me/?text='+encodeURIComponent(`🎉 ${meta.para}, te he preparado una felicitación que sonará en ONDA SONIKA el ${j.fecha} (${j.franja}). Escúchala aquí: ${j.enlace} 📻 ondasonika.com`);$('#share').style.display='block';}
+  } else if(j){$('#done h2').textContent='¡Recibida! 🎉';$('#doneNote').textContent='La hemos recibido y la programaremos en breve. Si hay algún problema te escribiremos por WhatsApp.';}
+  else{$('#doneNote').textContent='Versión de prueba: todavía no se envía nada.';}
   $('#done').scrollIntoView({behavior:'smooth'});};
 </script>
 </body>

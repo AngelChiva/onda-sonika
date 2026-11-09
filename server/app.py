@@ -19,7 +19,7 @@ AZ_URL = os.getenv("AZ_URL", "").rstrip("/")          # p. ej. https://radio.ond
 AZ_KEY = os.getenv("AZ_KEY", "")
 AZ_STATION = os.getenv("AZ_STATION", "1")
 AZ_FOLDER = os.getenv("AZ_FOLDER", "10 Dedicatorias")
-PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")  # p. ej. https://radio.ondasonika.com:8448
+PUBLIC_URL = (os.getenv("PUBLIC_URL") or "https://radio.ondasonika.com:9443").rstrip("/")  # p. ej. https://radio.ondasonika.com:8448
 ORIGINS = [o for o in os.getenv("ALLOWED_ORIGINS", "https://ondasonika.com,https://www.ondasonika.com").split(",") if o]
 DIAS_MIN = int(os.getenv("ANTELACION_DIAS", "5"))
 BORRAR_DIAS = int(os.getenv("BORRAR_DIAS", "90"))
@@ -81,8 +81,10 @@ async def tune(req: Request):
 
 @app.post("/api/dedica")
 async def dedica(req: Request):
-    limit(ip_of(req), 5, 3600)
-    try: meta = json.loads(base64.b64decode(req.headers.get("x-meta", "")).decode())
+    """Recibe la felicitación (multipart: meta, mix, voz), la revisa sola y, si está limpia, la programa en la radio."""
+    limit(ip_of(req), 6, 3600)
+    form = await req.form()
+    try: meta = json.loads(form.get("meta") or "{}")
     except Exception: raise HTTPException(400, "Datos no válidos")
     clean = lambda s, n=40: " ".join(str(s or "").split())[:n]
     m = {"motivo": meta.get("motivo"), "franja": meta.get("franja"), "fecha": meta.get("fecha"),
@@ -97,18 +99,40 @@ async def dedica(req: Request):
     except Exception: raise HTTPException(400, "Fecha no válida")
     hoy = dt.datetime.now(TZ).date()
     if f < hoy + dt.timedelta(days=DIAS_MIN) or f > hoy + dt.timedelta(days=120): raise HTTPException(400, "Fecha fuera de plazo")
-    y, sr = read_audio(await req.body())
+    mix = form.get("mix"); voz = form.get("voz")
+    if mix is None or voz is None: raise HTTPException(400, "Falta el audio")
+    y, sr = read_audio(await mix.read())
     if len(y) / sr > 70: raise HTTPException(413, "Audio demasiado largo")
+    vy, vsr = read_audio(await voz.read())
     code = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    m.update(code=code, secret=secrets.token_urlsafe(10), creado=dt.datetime.now(TZ).isoformat(timespec="minutes"))
     folder = DATA / "pend" / code; folder.mkdir(parents=True)
+    # 1) filtro automático
+    from moderar import transcribir, revisar, MSG
+    try: texto = transcribir(vy, vsr)
+    except Exception as e: texto = ""; m["error"] = f"transcripción: {e}"
+    ok, motivo = revisar(texto)
+    m["texto"] = texto
+    if not ok:
+        m.update(estado="rechazada", motivo=motivo); save_meta(m)   # solo se guarda el texto, no el audio
+        msg = ("No hemos entendido bien tu mensaje. Grábalo otra vez hablando cerca del móvil."
+               if motivo.startswith("no se entiende") else MSG)
+        raise HTTPException(422, msg)
+    # 2) audio final normalizado
     wav = folder / "orig.wav"; sf.write(wav, y, sr)
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(wav), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
                     "-ar", "44100", "-ac", "2", "-b:a", "160k", "-metadata", f"title=Felicitación {code}", "-metadata", "artist=ONDA SONIKA",
                     str(folder / "audio.mp3")], check=True)
     wav.unlink()
-    m.update(code=code, secret=secrets.token_urlsafe(10), estado="pendiente", creado=dt.datetime.now(TZ).isoformat(timespec="minutes"))
+    # 3) programar en la radio
+    try:
+        m["azuracast"] = programar(m); m["estado"] = "aceptada"
+    except Exception as e:
+        m["estado"] = "error"; m["error"] = f"No se pudo programar en la radio: {e}"
     save_meta(m)
-    return {"code": code}
+    franja = m["franja"].split(" ")
+    return {"code": code, "estado": m["estado"], "fecha": fecha_txt(m["fecha"]), "franja": f"{franja[0].lower()} ({franja[1].replace('-', ' a ')} h)",
+            "enlace": f"{PUBLIC_URL}/d/{code}/{m['secret']}" if m["estado"] == "aceptada" else ""}
 
 @app.get("/d/{code}/{secret}.mp3")
 def audio_pub(code: str, secret: str):
@@ -137,27 +161,45 @@ def admin_page():
     esc = lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;")
     cards = []
     for m in items:
-        st = m["estado"]
-        btns = (f'<div class="row"><button class="yes" onclick="dec(\'{m["code"]}\',1)">✅ Sí</button>'
-                f'<button class="no" onclick="dec(\'{m["code"]}\',0)">❌ No</button></div>') if st == "pendiente" else \
-               (f'<p class="st {st}">{st.upper()}' + (f' · <a href="#" onclick="resend(\'{m["code"]}\');return false">reenviar WhatsApp</a>' if m.get("wa") else '') + '</p>')
+        st = m.get("estado", "pendiente")
+        if st == "aceptada":
+            az_ = m.get("azuracast", {})
+            btns = f'<p class="st aceptada">✅ PROGRAMADA · {fecha_txt(m["fecha"])} a las {az_.get("hora","?")}</p><button class="no" onclick="quitar(\'{m["code"]}\')">Quitar de la radio</button>'
+        elif st in ("error", "pendiente"):
+            btns = f'<p class="err">{esc(m.get("error",""))}</p><button class="yes" onclick="prog(\'{m["code"]}\')">Programar ahora</button>'
+        elif st == "rechazada":
+            btns = f'<p class="st rechazada">❌ RECHAZADA AUTOMÁTICAMENTE · {esc(m.get("motivo",""))}</p>'
+        else:
+            btns = f'<p class="st">{st.upper()}</p>'
+        audio = f'<audio controls preload="none" src="/admin/audio/{m["code"]}.mp3"></audio>' if (DATA / "pend" / m["code"] / "audio.mp3").exists() else ""
         cards.append(f"""<div class="card {st}" data-st="{st}"><div class="code">{m['code']}</div>
-<b>{MOTIVOS[m['motivo']]} para {esc(m['para'])}</b>
+<b>{MOTIVOS.get(m['motivo'], m['motivo'])} para {esc(m['para'])}</b>
 <p>{fecha_txt(m['fecha'])} · {m['franja']}<br>De: {esc(m['de'])} · +{m['tel']}<br>Música: {esc(m.get('cancion') or 'sin canción')}<br><small>Recibida {m['creado'].replace('T',' ')}</small></p>
-<audio controls preload="none" src="/admin/audio/{m['code']}.mp3"></audio>{btns}{('<p class="err">'+esc(m['error'])+'</p>') if m.get('error') else ''}</div>""")
-    pend = sum(1 for m in items if m["estado"] == "pendiente")
-    return PAGE.format(body=f"""<h1>Felicitaciones</h1><p>{pend} pendiente(s)</p>
-<div class="tabs"><button onclick="f('pendiente')" class="on">Pendientes</button><button onclick="f('aceptada')">Aceptadas</button><button onclick="f('rechazada')">Rechazadas</button></div>
+<p style="color:#ddd;font-style:italic">“{esc(m.get('texto','')) or '—'}”</p>{audio}{btns}</div>""")
+    n = lambda e: sum(1 for m in items if m.get("estado") == e)
+    return PAGE.format(body=f"""<h1>Felicitaciones</h1><p>Se aceptan y programan solas. Aquí ves el historial.</p>
+<div class="tabs"><button onclick="f('aceptada')" class="on">Programadas ({n('aceptada')})</button><button onclick="f('rechazada')">Rechazadas ({n('rechazada')})</button><button onclick="f('error')">Con error ({n('error')+n('pendiente')})</button><button onclick="f('retirada')">Quitadas ({n('retirada')})</button></div>
 {''.join(cards) or '<p>No hay felicitaciones todavía.</p>'}
 <details style="margin-top:30px"><summary>⚙️ Ajustes</summary><p>Clave API de AzuraCast: {'✅ puesta' if az_key() else '❌ falta'}</p><input id="azk" placeholder="Pega aquí la clave API" style="width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#0f0f11;color:#fff"><button onclick="saveKey()" style="margin-top:8px;padding:10px 16px;border-radius:10px">Guardar</button></details>
 <script>
-function f(s){{document.querySelectorAll('.card').forEach(c=>c.style.display=c.dataset.st===s?'':'none');document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes(s)))}}f('pendiente');
-async function dec(code,ok){{if(!confirm(ok?'¿Aceptar y programar en la radio?':'¿Rechazar esta felicitación?'))return;
- const r=await fetch('/admin/decide/'+code+'?ok='+ok,{{method:'POST'}});const j=await r.json();if(!r.ok){{alert(j.detail||'Error');location.reload();return}}
- if(j.aviso)alert(j.aviso);location.href=j.wa;}}
+function f(s){{document.querySelectorAll('.card').forEach(c=>c.style.display=(c.dataset.st===s||(s==='error'&&c.dataset.st==='pendiente'))?'':'none');document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes("'"+s+"'")))}}f('aceptada');
+async function quitar(code){{if(!confirm('¿Quitar esta felicitación de la radio? Ya no sonará.'))return;const r=await fetch('/admin/quitar/'+code,{{method:'POST'}});const j=await r.json();if(!r.ok)alert(j.detail||'Error');location.reload()}}
+async function prog(code){{const r=await fetch('/admin/decide/'+code+'?ok=1',{{method:'POST'}});const j=await r.json();alert(r.ok?(j.aviso||'Programada'):(j.detail||'Error'));location.reload()}}
 async function saveKey(){{const v=document.getElementById('azk').value.trim();if(!v)return;await fetch('/admin/config',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{az_key:v}})}});location.reload()}}
-async function resend(code){{const r=await fetch('/admin/wa/'+code);const j=await r.json();location.href=j.wa}}
 </script>""")
+
+@app.post("/admin/quitar/{code}", dependencies=[Depends(admin)])
+def quitar(code: str):
+    m = load_meta(code.upper())
+    if m.get("estado") != "aceptada": raise HTTPException(409, "No está programada")
+    a = m.get("azuracast", {})
+    try:
+        if a.get("playlist_id"): az("DELETE", f"/playlist/{a['playlist_id']}")
+        if a.get("file_id"): az("DELETE", f"/file/{a['file_id']}")
+    except Exception as e:
+        raise HTTPException(502, f"No se pudo quitar de la radio: {e}")
+    m["estado"] = "retirada"; m["retirada"] = dt.datetime.now(TZ).isoformat(timespec="minutes"); save_meta(m)
+    return {"ok": True}
 
 def az_key(): return cfg().get("az_key") or AZ_KEY
 
@@ -187,7 +229,7 @@ def admin_wa(code: str): return {"wa": wa_link(load_meta(code.upper()))}
 @app.post("/admin/decide/{code}", dependencies=[Depends(admin)])
 def decide(code: str, ok: int):
     m = load_meta(code.upper())
-    if m["estado"] != "pendiente": raise HTTPException(409, "Ya estaba decidida")
+    if m.get("estado") not in ("pendiente", "error"): raise HTTPException(409, "Ya estaba decidida")
     aviso = None
     if ok:
         try:
@@ -196,7 +238,7 @@ def decide(code: str, ok: int):
             m["error"] = f"No se pudo programar en la radio: {e}"; save_meta(m)
             raise HTTPException(502, m["error"])
         m["estado"] = "aceptada"
-        aviso = f"Programada para el {fecha_txt(m['fecha'])} a las {m['azuracast']['hora']}. Ahora se abre WhatsApp: pulsa enviar."
+        aviso = f"Programada para el {fecha_txt(m['fecha'])} a las {m['azuracast']['hora']}."
     else:
         m["estado"] = "rechazada"
     m["decidido"] = dt.datetime.now(TZ).isoformat(timespec="minutes"); m["wa"] = True
@@ -224,7 +266,7 @@ def programar(m):
     end = min(h1 * 100, (hora + 1) * 100 + minuto)
     path = f"{AZ_FOLDER}/felicitacion-{m['code']}.mp3"
     mp3 = (DATA / "pend" / m["code"] / "audio.mp3").read_bytes()
-    az("POST", "/files", {"path": path, "file": base64.b64encode(mp3).decode()})
+    up = az("POST", "/files", {"path": path, "file": base64.b64encode(mp3).decode()})
     f = dt.date.fromisoformat(m["fecha"])
     pl = az("POST", "/playlists", {
         "name": f"Felicitación {m['code']} ({m['fecha']})", "type": "default", "source": "songs", "order": "sequential",
@@ -233,7 +275,7 @@ def programar(m):
         "schedule_items": [{"start_time": start, "end_time": end, "days": [f.isoweekday()],
                             "start_date": m["fecha"], "end_date": m["fecha"], "loop_once": True}]})
     az("PUT", "/files/batch", {"do": "playlist", "files": [path], "dirs": [], "playlists": [pl["id"]], "currentDirectory": ""})
-    return {"playlist_id": pl["id"], "file": path, "hora": f"{start // 100}:{start % 100:02d}"}
+    return {"playlist_id": pl["id"], "file": path, "file_id": up.get("id"), "hora": f"{start // 100}:{start % 100:02d}"}
 
 # ---------- limpieza ----------
 def limpieza():
@@ -262,3 +304,10 @@ h1{{font-size:26px;margin:14px 0 6px}}p{{color:var(--mut);line-height:1.45}}audi
 .tabs{{display:flex;gap:8px;margin-top:10px}}.tabs button{{flex:1;padding:10px;border-radius:99px;border:1px solid var(--line);background:#0f0f11;color:var(--txt)}}
 .tabs .on{{border-color:var(--or);color:var(--or2)}}.st.aceptada{{color:#25d366}}.st.rechazada{{color:#ff8a80}}.err{{color:#ff8a80}}a{{color:var(--or2)}}
 </style></head><body><div class="w"><div class="top">ONDA SONIKA</div>{body}</div></body></html>"""
+
+# precarga el modelo de voz a texto al arrancar, para que la primera felicitación no tarde
+def _precarga():
+    try:
+        from moderar import transcribir; transcribir(np.zeros(16000, dtype="float32"), 16000)
+    except Exception as e: print("precarga whisper:", e)
+threading.Thread(target=_precarga, daemon=True).start()

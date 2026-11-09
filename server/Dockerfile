@@ -3,7 +3,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libsndfi
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py tune.py ./
+COPY app.py tune.py moderar.py ./
+# descarga el modelo de voz a texto dentro de la imagen (gratis, funciona sin internet)
+RUN python -c "from faster_whisper import WhisperModel;WhisperModel('base',device='cpu',compute_type='int8',download_root='/models')"
 # precalienta numba/librosa para que el primer autotune no tarde
 RUN python -c "import numpy as np,tune;tune.autotune((np.sin(np.arange(22050)/22050*2*np.pi*220)*.3).astype('float32'),22050)"
 ENV DATA_DIR=/data

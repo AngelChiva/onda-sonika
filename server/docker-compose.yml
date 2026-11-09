@@ -8,4 +8,4 @@ services:
     volumes:
       - ./data:/data
       - ./certs:/certs:ro
-    mem_limit: 700m
+    mem_limit: 1200m

@@ -5,3 +5,5 @@ numpy
 scipy
 librosa==1.0.0
 psola==0.0.1
+faster-whisper==1.2.1
+python-multipart==0.0.32
