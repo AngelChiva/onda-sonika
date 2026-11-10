@@ -34,6 +34,8 @@ input[type=text]{width:100%;background:#0f0f11;border:1px solid var(--line);colo
 .btn2{padding:12px 14px;border-radius:12px;border:1px solid var(--or);background:transparent;color:var(--or2);font:inherit;font-weight:700;cursor:pointer;font-size:14px}
 .dl{display:flex;gap:10px;margin-top:12px}.dl a{flex:1;text-align:center;text-decoration:none}
 audio{width:100%;margin-top:12px}
+.prev{margin-top:14px;border:1px solid #ff7a1a;border-radius:14px;padding:14px;background:rgba(255,122,26,.07)}
+.prevHead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:15px}.prevHead span{color:#ffb070;font-size:13px}
 .info{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.45}
 .busy{color:var(--or2);font-size:14px;margin-top:10px}
 canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0f11;display:block}
@@ -82,11 +84,16 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
       <div class="row info" style="margin-top:2px"><span>Más música</span><span>Más voz</span></div></div>
     <label style="display:block;font-size:14px;margin:14px 0 6px">Nombre del archivo</label>
     <input type="text" id="name" placeholder="Ej.: Cuña Corident noviembre">
-    <button class="btn" id="go" disabled>🎚️ Crear la cuña</button>
+    <button class="btn" id="go" disabled>🎧 Crear y escuchar la cuña</button>
     <div class="busy" id="busy" hidden>Procesando…</div>
-    <audio id="out" controls hidden></audio>
-    <p class="info" id="stats"></p>
-    <div class="dl" id="dl" hidden><a class="btn2" id="dlMp3">⬇ Descargar MP3</a><a class="btn2" id="dlWav">⬇ Descargar WAV</a></div>
+    <div class="prev" id="prev" hidden>
+      <div class="prevHead"><b>🎧 Escúchala antes de descargar</b><span id="prevState">Sonando…</span></div>
+      <audio id="out" controls></audio>
+      <p class="info" id="stats"></p>
+      <p class="info">¿No te convence? Cambia la música, el trozo o el volumen y vuelve a pulsar «Crear y escuchar». No se descarga nada hasta que tú quieras.</p>
+      <div class="dl" id="dl"><a class="btn2" id="dlMp3">👍 Me gusta: descargar MP3</a><a class="btn2" id="dlWav">Descargar WAV</a></div>
+    </div>
+    <p class="info" id="stale" hidden>Has cambiado algo: pulsa «Crear y escuchar» para oír la nueva versión.</p>
   </section>
   <p class="info" style="margin-top:16px">Consejo: graba siempre con el mismo micrófono y a la misma distancia; el estudio iguala el resto. Tamaño máximo recomendado: canciones de hasta 10 minutos.</p>
 </div>
@@ -164,7 +171,7 @@ async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);v=
  // volumen fijo: misma sonoridad en todas las cuñas
  const k=Math.pow(10,(-17-rmsDb(d))/20);let pk=0;for(let i=0;i<d.length;i++){d[i]*=k;pk=Math.max(pk,Math.abs(d[i]))}if(pk>.89)for(let i=0;i<d.length;i++)d[i]*=.89/pk;return d}
 
-$('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#dl').hidden=true;await new Promise(r=>setTimeout(r,30));
+$('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#prev').hidden=true;$('#stale').hidden=true;await new Promise(r=>setTimeout(r,30));
  try{const v=await processVoice(),vd=v.length/SR,noMus=$('#oNoMus').checked||!S.mus;
   const pre=noMus?0.2:+$('#intro').value,post=noMus?0.3:+$('#outro').value,total=pre+vd+post,bal=+$('#bal').value;
   const ctx=new OfflineAudioContext(2,Math.ceil(total*SR),SR);
@@ -181,7 +188,7 @@ $('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#dl
   let pk=0;for(let c=0;c<2;c++){for(const x of out.getChannelData(c))pk=Math.max(pk,Math.abs(x))}const k=pk>.93?.93/pk:1;
   const L=out.getChannelData(0),R=out.getChannelData(1);if(k<1)for(let i=0;i<L.length;i++){L[i]*=k;R[i]*=k}
   const nm=($('#name').value.trim()||'Cuña ONDA SONIKA').replace(/[\\/:*?"<>|]/g,'');
-  const wav=toWav(L,R),mp3=toMp3(L,R);$('#out').src=URL.createObjectURL(wav);$('#out').hidden=false;$('#out').play().catch(()=>{});
+  const wav=toWav(L,R),mp3=toMp3(L,R);$('#out').src=URL.createObjectURL(wav);$('#prev').hidden=false;$('#prevState').textContent='Sonando…';$('#out').play().catch(()=>{$('#prevState').textContent='Pulsa ▶ para escucharla'});$('#prev').scrollIntoView({behavior:'smooth',block:'center'});
   $('#dlWav').href=URL.createObjectURL(wav);$('#dlWav').download=nm+'.wav';
   if(mp3){$('#dlMp3').href=URL.createObjectURL(mp3);$('#dlMp3').download=nm+'.mp3';$('#dlMp3').hidden=false}else $('#dlMp3').hidden=true;
   $('#dl').hidden=false;$('#stats').textContent=`Duración: ${total.toFixed(1)} s (voz ${vd.toFixed(1)} s${noMus?'':` + ${pre} s antes + ${post} s después`}).`;}
@@ -193,6 +200,12 @@ function toWav(L,R){const n=L.length,buf=new ArrayBuffer(44+n*4),v=new DataView(
  for(let i=0;i<n;i++){v.setInt16(o,Math.max(-1,Math.min(1,L[i]))*32767,true);o+=2;v.setInt16(o,Math.max(-1,Math.min(1,R[i]))*32767,true);o+=2}return new Blob([buf],{type:'audio/wav'})}
 function toMp3(L,R){if(!window.lamejs)return null;const enc=new lamejs.Mp3Encoder(2,SR,192),bl=1152,out=[];const cv=a=>{const x=new Int16Array(a.length);for(let i=0;i<a.length;i++)x[i]=Math.max(-32768,Math.min(32767,a[i]*32767));return x};
  const l=cv(L),r=cv(R);for(let i=0;i<l.length;i+=bl){const b=enc.encodeBuffer(l.subarray(i,i+bl),r.subarray(i,i+bl));if(b.length)out.push(b)}const e=enc.flush();if(e.length)out.push(e);return new Blob(out,{type:'audio/mpeg'})}
+
+/* escuchar antes de descargar: avisar si se cambia algo después de crear la cuña */
+const marcaCambio=e=>{const t=e.target;if(!t||t.id==='name'||t.id==='pin'||t.id==='out')return;if(!$('#prev').hidden){$('#stale').hidden=false;$('#prevState').textContent='Versión anterior (has cambiado algo)';}};
+document.addEventListener('input',marcaCambio);document.addEventListener('change',marcaCambio);
+$('#out').addEventListener('ended',()=>{$('#prevState').textContent='¿Te gusta? Descárgala abajo'});
+$('#out').addEventListener('play',()=>{if($('#stale').hidden)$('#prevState').textContent='Sonando…'});
 </script>
 </body>
 </html>
