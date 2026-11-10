@@ -62,7 +62,7 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
 .rq-it button:disabled{opacity:.6}
 .rq-bt{display:flex;gap:6px;flex:none}.rq-it button.dd{background:#2a1d2e;color:#ffb3d9;border:1px solid #6b2d57}
 .ded{margin-top:14px;border:1px solid #6b2d57;border-radius:14px;padding:14px;background:linear-gradient(160deg,rgba(255,77,148,.10),rgba(255,122,26,.06));display:flex;flex-direction:column;gap:10px}
-.ded-h{font-size:16px}.ded-h b{color:#ffb3d9}
+.ded-h{font-size:16px}.ded-h b{color:#ffb347}.ded-opt{display:flex;flex-direction:column;gap:10px;border-top:1px dashed #4a2a40;padding-top:10px}.ded-h2{font-size:15px;color:#ffb3d9;font-weight:700}.ded-h2 span{color:#a29d96;font-weight:400;font-size:13px}
 .ded input[type=text],.ded input:not([type]){width:100%;background:#0f0f11;border:1px solid #2a2a2e;color:#f4f1ec;border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
 .ded-p{font-size:13.5px;color:#a29d96;margin:0}.ded-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ded-rec,.ded-send,.ded-x{border:0;border-radius:99px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer}
@@ -117,14 +117,17 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
       <div id="rqList" class="rq-list"></div>
       <p class="rq-msg" id="rqMsg"></p>
       <div class="ded" id="ded" hidden>
-        <div class="ded-h">💌 Dedicar <b id="dSong"></b></div>
-        <input id="dPara" maxlength="30" placeholder="¿Para quién es? (nombre)" autocomplete="off">
-        <input id="dDe" maxlength="30" placeholder="Tu nombre (opcional)" autocomplete="off">
-        <p class="ded-p">Graba un mensaje corto (máximo 20 segundos). Primero sonará tu voz y justo después la canción.</p>
-        <div class="ded-row"><button type="button" class="ded-rec" id="dRec">🎙️ Grabar mensaje</button><span id="dTime"></span></div>
-        <audio id="dPrev" controls hidden></audio>
-        <label class="ded-ok"><input type="checkbox" id="dOk"> Acepto que mi mensaje se emita en ONDA SONIKA. Sin insultos, teléfonos, direcciones ni redes sociales: lo revisamos automáticamente.</label>
-        <div class="ded-row"><button type="button" class="ded-send" id="dSend" disabled>Enviar dedicatoria</button><button type="button" class="ded-x" id="dX">Cancelar</button></div>
+        <div class="ded-h">🎵 Vas a pedir <b id="dSong"></b></div>
+        <div class="ded-opt" id="dOpt">
+          <div class="ded-h2">💌 ¿Quieres dedicarla? <span>(opcional)</span></div>
+          <input id="dPara" maxlength="30" placeholder="¿Para quién es? (nombre)" autocomplete="off">
+          <input id="dDe" maxlength="30" placeholder="Tu nombre (opcional)" autocomplete="off">
+          <p class="ded-p">Graba un mensaje corto (máx. 20 s). Sonará tu voz y justo después la canción.</p>
+          <div class="ded-row"><button type="button" class="ded-rec" id="dRec">🎙️ Grabar mensaje</button><span id="dTime"></span></div>
+          <audio id="dPrev" controls hidden></audio>
+          <label class="ded-ok" id="dOkL" hidden><input type="checkbox" id="dOk"> Acepto que mi mensaje se emita en ONDA SONIKA. Sin insultos, teléfonos, direcciones ni redes sociales: lo revisamos automáticamente.</label>
+        </div>
+        <div class="ded-row"><button type="button" class="ded-send" id="dSend">🎵 Pedir canción</button><button type="button" class="ded-x" id="dX">Cancelar</button></div>
         <p class="rq-msg" id="dMsg"></p>
       </div>
       <div class="rq-miss" id="rqMiss" hidden>
@@ -181,24 +184,23 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
   wa.href="https://wa.me/"+WA+"?text="+encodeURIComponent("🎵 Hola ONDA SONIKA, ¿me ponéis esta canción? "+(q.value.trim()||""));
   if(v.length<2){box.innerHTML="";miss.hidden=true;return}
   const r=L.filter(x=>v.split(/\s+/).every(w=>x.k.includes(w))).slice(0,8);
-  box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><div class="rq-bt"><button data-id="${x.id}">Pedir</button>${DEDOK?`<button class="dd" data-id="${x.id}" data-act="ded">💌 Dedicar</button>`:""}</div></div>`).join("");
+  box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><div class="rq-bt"><button data-id="${x.id}">Pedir</button></div></div>`).join("");
   miss.hidden=false}
  q.addEventListener("input",draw);
  const DEV=(()=>{try{let d=localStorage.getItem("os_dev");if(!d){d=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("os_dev",d)}return d}catch(_){return""}})();
  const SRV="https://radio.ondasonika.com:9443/api/pedir",perm=b=>fetch(SRV,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
  const fail=(b,t)=>{b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent=t};
- box.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||busy)return;if(b.dataset.act==="ded"){abreDed(b.dataset.id);return}busy=1;b.disabled=true;b.textContent="…";
-  const x=L.find(y=>String(y.id)===b.dataset.id)||{},who={dev:DEV,artista:x.a||""};let q=null;
-  try{const p=await perm(who);const pj=await p.json().catch(()=>({}));if(p.status===429){fail(b,pj.detail||"Ahora no se puede pedir. Prueba más tarde.");busy=0;return}if(p.ok)q=pj.quedan}
-  catch(_){/* si el servidor de límites no responde, se pide igual */}
-  try{const r=await fetch(API+"/api/station/"+ST+"/request/"+b.dataset.id,{method:"POST"});const j=await r.json().catch(()=>({}));
-   if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en las próximas canciones de ONDA SONIKA 📻"+(q===0?" (Hoy ya no te quedan más peticiones.)":q===1?" (Te queda 1 petición hoy.)":"")}
-   else{perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}}
-  catch(_){perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}busy=0});
+ box.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;abreDed(b.dataset.id)});
+ // pedir sin dedicatoria
+ async function pedirSolo(x){const who={dev:DEV,artista:x.a||""};let q=null;
+  try{const p=await perm(who);const pj=await p.json().catch(()=>({}));if(p.status===429)return [false,pj.detail||"Ahora no se puede pedir. Prueba más tarde."];if(p.ok)q=pj.quedan}catch(_){}
+  try{const r=await fetch(API+"/api/station/"+ST+"/request/"+x.id,{method:"POST"});const j=await r.json().catch(()=>({}));
+   if(r.ok&&j.success!==false)return [true,"¡Hecho! «"+x.t+"» sonará en las próximas canciones de ONDA SONIKA 📻"+(q===0?" (Hoy ya no te quedan más peticiones.)":q===1?" (Te queda 1 petición hoy.)":"")]}catch(_){}
+  perm({...who,cancelar:1}).catch(()=>{});return [false,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato."]}
  /* ===== Dedicar canción con tu voz ===== */
  const $d=id=>document.getElementById(id),D={song:null,blob:null,rec:null,t:null};
- function okSend(){$d("dSend").disabled=!(D.blob&&$d("dOk").checked&&$d("dPara").value.trim())}
- function abreDed(id){const x=L.find(y=>String(y.id)===String(id));if(!x)return;D.song=x;$d("dSong").textContent=x.t+" · "+x.a;$d("ded").hidden=false;$d("dMsg").textContent="";okSend();$d("ded").scrollIntoView({behavior:"smooth",block:"center"})}
+ function okSend(){const ded=!!D.blob;$d("dOkL").hidden=!ded;$d("dSend").textContent=ded?"💌 Pedir y dedicar":"🎵 Pedir canción";$d("dSend").disabled=ded&&!($d("dOk").checked&&$d("dPara").value.trim())}
+ function abreDed(id){const x=L.find(y=>String(y.id)===String(id));if(!x)return;D.song=x;D.blob=null;$d("dPrev").hidden=true;$d("dTime").textContent="";$d("dRec").textContent="🎙️ Grabar mensaje";$d("dOk").checked=false;$d("dSong").textContent=x.t+" · "+x.a;$d("dOpt").hidden=!DEDOK;$d("ded").hidden=false;$d("dMsg").textContent="";okSend();$d("ded").scrollIntoView({behavior:"smooth",block:"center"})}
  ["dPara","dOk"].forEach(i=>$d(i).addEventListener("input",okSend));$d("dOk").addEventListener("change",okSend);
  $d("dX").onclick=()=>{$d("ded").hidden=true;if(D.rec&&D.rec.state==="recording")D.rec.stop()};
  $d("dRec").onclick=async()=>{const btn=$d("dRec");
@@ -210,7 +212,9 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
    D.blob=new Blob(ch,{type:D.rec.mimeType||mt||"audio/webm"});$d("dPrev").src=URL.createObjectURL(D.blob);$d("dPrev").hidden=false;$d("dTime").textContent="Escúchalo antes de enviar 👇";okSend()};
   D.rec.start();btn.classList.add("on");btn.textContent="⏹ Parar";const t0=Date.now();
   D.t=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$d("dTime").textContent="Grabando… "+s+" / 20 s";if(s>=20&&D.rec.state==="recording")D.rec.stop()},250)};
- $d("dSend").onclick=async()=>{const b=$d("dSend"),m=$d("dMsg");b.disabled=true;b.textContent="Revisando tu mensaje…";m.textContent="";
+ $d("dSend").onclick=async()=>{const b=$d("dSend"),m=$d("dMsg");m.textContent="";b.disabled=true;
+  if(!D.blob){b.textContent="Pidiendo…";const [ok,t]=await pedirSolo(D.song);m.className="rq-msg "+(ok?"ok":"err");m.textContent=t;if(ok){b.textContent="✓ Pedida";return}b.disabled=false;okSend();return}
+  b.textContent="Revisando tu mensaje… (unos segundos)";
   const fd=new FormData();
   fd.append("meta",JSON.stringify({id:D.song.id,artista:D.song.a,titulo:D.song.t,para:$d("dPara").value.trim(),de:$d("dDe").value.trim(),consent:true,dev:DEV}));
   const ab=new AbortController(),to=setTimeout(()=>ab.abort(),90000);
@@ -219,7 +223,7 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
    if(r.ok){m.className="rq-msg ok";m.textContent="¡Listo! 💌 Tu dedicatoria y «"+D.song.t+"» sonarán en las próximas canciones de ONDA SONIKA. ¡Dale al play arriba y avisa a "+$d("dPara").value.trim()+"!";b.textContent="✓ Enviada";D.blob=null;return}
    m.className="rq-msg err";m.textContent=(r.status===422?"🚫 ":"")+(j.detail||"No se ha podido enviar. Prueba otra vez.")}
   catch(e){clearTimeout(to);m.className="rq-msg err";m.textContent=e&&e.name==="AbortError"?"Está tardando demasiado. Revisa tu conexión y prueba otra vez.":"No se ha podido enviar. Revisa tu conexión y prueba otra vez."}
-  b.textContent="Enviar dedicatoria";okSend()};
+  okSend()};
  /* convierte la grabación a WAV (16 kHz, mono) en el móvil: más fiable en iPhone y pesa poco */
  async function aWav(blob){const buf=await blob.arrayBuffer();let au;
   try{const C=window.AudioContext||window.webkitAudioContext,c=new C();au=await new Promise((ok,ko)=>{const p=c.decodeAudioData(buf.slice(0),ok,ko);if(p&&p.then)p.then(ok,ko)});c.close&&c.close()}catch(_){return new Blob([buf],{type:blob.type||"application/octet-stream"})}

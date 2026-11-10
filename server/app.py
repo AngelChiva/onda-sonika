@@ -456,38 +456,52 @@ async def dedicar(req: Request):
                         "-metadata", f"title=Dedicatoria para {m['para']}", "-metadata", f"artist=Dedicatoria ONDA SONIKA {code}", str(mp3)], check=True)
     except Exception:
         suelta(); raise HTTPException(500, "No hemos podido preparar el audio. Prueba otra vez.")
-    # a la radio: sube el mensaje, lo pide y justo después pide la canción
+    # ¿la canción o el artista han sonado en la última hora? (lo mismo que comprueba AzuraCast; así avisamos al momento)
+    try:
+        fin = dt.datetime.now(dt.timezone.utc); ini = fin - dt.timedelta(minutes=60)
+        hist = az("GET", "/history?start=" + urllib.parse.quote(ini.isoformat()) + "&end=" + urllib.parse.quote(fin.isoformat()))
+        hist = hist.get("rows", hist) if isinstance(hist, dict) else hist
+        a0 = _norm(m["artista"]); t0 = _norm(m["titulo"])
+        for hh in hist or []:
+            sg = hh.get("song") or {}
+            if (t0 and _norm(sg.get("title")) == t0) or (a0 and _norm(sg.get("artist")) == a0):
+                suelta(); m.update(estado="cancion_no_disponible"); guarda()
+                raise HTTPException(409, "Esta canción o este artista ha sonado hace poco. Elige otra y vuelve a enviarla.")
+    except HTTPException: raise
+    except Exception as e: print("historial:", e)
+    m["estado"] = "enviando"; guarda()
+    threading.Thread(target=_ded_a_radio, args=(m, mp3, tmp, raw, w16, suelta, guarda), daemon=True).start()
+    return {"ok": True, "code": code}
+
+def _ded_a_radio(m, mp3, tmp, raw, w16, suelta, guarda):
+    """Sube el mensaje a AzuraCast, lo pide y justo después pide la canción (en segundo plano)."""
+    code = m["code"]; fid = uid = None
     try:
         pl = _ded_pl()
         if pl is None: raise RuntimeError("falta la lista " + DED_PLAYLIST)
         up = az("POST", "/files", {"path": f"{DED_CARPETA}/{code}.mp3", "file": base64.b64encode(mp3.read_bytes()).decode()})
         fid = up.get("id"); az("PUT", f"/file/{fid}", {"playlists": [{"id": pl}]})
-        uid = az("GET", f"/file/{fid}").get("unique_id")
-        m["file_id"] = fid
+        uid = az("GET", f"/file/{fid}").get("unique_id"); m["file_id"] = fid
         az("POST", f"/request/{uid}")
-    except urllib.error.HTTPError as e:
-        suelta(); m.update(estado="error", error=az_msg(e)); guarda(); raise HTTPException(502, "Ahora no se puede enviar a la radio. Prueba en un rato.")
     except Exception as e:
-        suelta(); m.update(estado="error", error=str(e)); guarda(); raise HTTPException(502, "Ahora no se puede enviar a la radio. Prueba en un rato.")
+        suelta(); m.update(estado="error", error=az_msg(e) if isinstance(e, urllib.error.HTTPError) else str(e)); guarda(); print("dedicar:", m["error"]); return
     try:
         az("POST", f"/request/{m['cancion_id']}")
     except Exception as e:
-        # la canción no se puede pedir ahora: se anula el mensaje
         try:
             for r in az("GET", "/reports/requests?type=pending"):
-                if (r.get("track") or {}).get("unique_id") == uid or str((r.get("track") or {}).get("id")) == str(fid): az("DELETE", f"/reports/requests/{r['request_id'] if 'request_id' in r else r['id']}")
+                tr = r.get("track") or {}
+                if tr.get("unique_id") == uid or str(tr.get("id")) == str(fid): az("DELETE", f"/reports/requests/{r.get('request_id', r.get('id'))}")
         except Exception: pass
         try: az("DELETE", f"/file/{fid}")
         except Exception: pass
-        suelta(); m.update(estado="cancion_no_disponible", error=az_msg(e) if isinstance(e, urllib.error.HTTPError) else str(e)); guarda()
-        raise HTTPException(409, "Esta canción o este artista ha sonado hace poco. Elige otra y vuelve a enviarla.")
+        suelta(); m.update(estado="cancion_no_disponible", error=az_msg(e) if isinstance(e, urllib.error.HTTPError) else str(e)); guarda(); print("dedicar canción:", m["error"]); return
     m["estado"] = "en_cola"; guarda(); raw.unlink(missing_ok=True); w16.unlink(missing_ok=True)
-    return {"ok": True, "code": code}
 
 def _borra_dedicatorias_viejas():
     try:
         for f in az("GET", "/files"):
-            if str(f.get("path", "")).startswith(DED_CARPETA + "/") and (f.get("uploaded_at") or 0) < time.time() - 86400:
+            if str(f.get("path", "")).startswith(DED_CARPETA + "/") and (f.get("uploaded_at") or f.get("mtime") or time.time()) < time.time() - 86400:
                 try: az("DELETE", f"/file/{f['id']}")
                 except Exception as e: print("borrar dedicatoria:", e)
     except Exception as e: print("dedicatorias viejas:", e)
