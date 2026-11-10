@@ -60,6 +60,17 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
 .rq-it b{display:block;font-size:15px}.rq-it span{font-size:13px;color:#a29d96}
 .rq-it button{flex:none;border:0;border-radius:99px;padding:9px 16px;font:inherit;font-weight:800;background:linear-gradient(145deg,#ffb347,#ff7a1a);color:#111;cursor:pointer}
 .rq-it button:disabled{opacity:.6}
+.rq-bt{display:flex;gap:6px;flex:none}.rq-it button.dd{background:#2a1d2e;color:#ffb3d9;border:1px solid #6b2d57}
+.ded{margin-top:14px;border:1px solid #6b2d57;border-radius:14px;padding:14px;background:linear-gradient(160deg,rgba(255,77,148,.10),rgba(255,122,26,.06));display:flex;flex-direction:column;gap:10px}
+.ded-h{font-size:16px}.ded-h b{color:#ffb3d9}
+.ded input[type=text],.ded input:not([type]){width:100%;background:#0f0f11;border:1px solid #2a2a2e;color:#f4f1ec;border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
+.ded-p{font-size:13.5px;color:#a29d96;margin:0}.ded-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ded-rec,.ded-send,.ded-x{border:0;border-radius:99px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer}
+.ded-rec{background:#ff4d94;color:#fff}.ded-rec.on{background:#d81b60;animation:pulso 1s infinite}
+.ded-send{background:linear-gradient(145deg,#ffb347,#ff7a1a);color:#111}.ded-send:disabled{opacity:.45;cursor:default}
+.ded-x{background:transparent;color:#a29d96;border:1px solid #333}
+.ded-ok{font-size:13px;color:#cfc9c2;display:flex;gap:8px;align-items:flex-start}.ded audio{width:100%}
+@keyframes pulso{50%{opacity:.7}}
 .rq-msg{font-size:14px;margin-top:10px}.rq-msg.ok{color:#25d366}.rq-msg.err{color:#ff8a80}
 .rq-miss{margin-top:12px;font-size:14px;color:#a29d96}.rq-miss b{color:#f4f1ec}
 .rq-wa{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:12px;background:#25d366;color:#05290f;font-weight:800;text-decoration:none}
@@ -101,10 +112,21 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
   <section id="pide">
     <h2>PIDE TU CANCIÓN</h2>
     <div class="req">
-      <p class="rq-lead">🎵 Busca tu canción y pídela: <b>suena en las próximas canciones</b>. Hasta 2 peticiones al día.</p>
+      <p class="rq-lead">🎵 Busca tu canción y pídela, o <b>dedícala con tu voz</b> 💌: suena en las próximas canciones. Hasta 2 al día.</p>
       <input type="search" id="rqQ" placeholder="Busca por canción o artista…" autocomplete="off">
       <div id="rqList" class="rq-list"></div>
       <p class="rq-msg" id="rqMsg"></p>
+      <div class="ded" id="ded" hidden>
+        <div class="ded-h">💌 Dedicar <b id="dSong"></b></div>
+        <input id="dPara" maxlength="30" placeholder="¿Para quién es? (nombre)" autocomplete="off">
+        <input id="dDe" maxlength="30" placeholder="Tu nombre (opcional)" autocomplete="off">
+        <p class="ded-p">Graba un mensaje corto (máximo 20 segundos). Primero sonará tu voz y justo después la canción.</p>
+        <div class="ded-row"><button type="button" class="ded-rec" id="dRec">🎙️ Grabar mensaje</button><span id="dTime"></span></div>
+        <audio id="dPrev" controls hidden></audio>
+        <label class="ded-ok"><input type="checkbox" id="dOk"> Acepto que mi mensaje se emita en ONDA SONIKA. Sin insultos, teléfonos, direcciones ni redes sociales: lo revisamos automáticamente.</label>
+        <div class="ded-row"><button type="button" class="ded-send" id="dSend" disabled>Enviar dedicatoria</button><button type="button" class="ded-x" id="dX">Cancelar</button></div>
+        <p class="rq-msg" id="dMsg"></p>
+      </div>
       <div class="rq-miss" id="rqMiss" hidden>
         <p>¿No la encuentras? <b>Pídenosla</b> y la buscamos para la radio.</p>
         <a class="rq-wa" id="rqWa" target="_blank" rel="noopener">💬 Pedirla por WhatsApp</a>
@@ -153,19 +175,19 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
  const esc=t=>String(t||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
  const q=document.getElementById("rqQ"),box=document.getElementById("rqList"),msg=document.getElementById("rqMsg"),miss=document.getElementById("rqMiss"),wa=document.getElementById("rqWa");
  const add=a=>{const ids=new Set(L.map(x=>x.id));a.forEach(x=>{if(!ids.has(x.id)){ids.add(x.id);L.push({...x,k:N(x.a+" "+x.t)})}})};
- fetch("https://radio.ondasonika.com:9443/api/canciones").then(r=>r.json()).then(j=>add(j.canciones||[])).catch(()=>{});
+ let DEDOK=false;fetch("https://radio.ondasonika.com:9443/api/canciones").then(r=>r.json()).then(j=>{add(j.canciones||[]);DEDOK=true;if(q.value.trim().length>1)draw()}).catch(()=>{});
  fetch(API+"/api/station/"+ST+"/requests").then(r=>r.json()).then(j=>add((Array.isArray(j)?j:j.rows||[]).map(x=>({id:x.request_id,a:x.song.artist,t:x.song.title})))).catch(()=>{});
  function draw(){const v=N(q.value.trim());msg.textContent="";
   wa.href="https://wa.me/"+WA+"?text="+encodeURIComponent("🎵 Hola ONDA SONIKA, ¿me ponéis esta canción? "+(q.value.trim()||""));
   if(v.length<2){box.innerHTML="";miss.hidden=true;return}
   const r=L.filter(x=>v.split(/\s+/).every(w=>x.k.includes(w))).slice(0,8);
-  box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><button data-id="${x.id}">Pedir</button></div>`).join("");
+  box.innerHTML=r.map(x=>`<div class="rq-it"><div><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><div class="rq-bt"><button data-id="${x.id}">Pedir</button>${DEDOK?`<button class="dd" data-id="${x.id}" data-act="ded">💌 Dedicar</button>`:""}</div></div>`).join("");
   miss.hidden=false}
  q.addEventListener("input",draw);
  const DEV=(()=>{try{let d=localStorage.getItem("os_dev");if(!d){d=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("os_dev",d)}return d}catch(_){return""}})();
  const SRV="https://radio.ondasonika.com:9443/api/pedir",perm=b=>fetch(SRV,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
  const fail=(b,t)=>{b.textContent="Pedir";b.disabled=false;msg.className="rq-msg err";msg.textContent=t};
- box.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||busy)return;busy=1;b.disabled=true;b.textContent="…";
+ box.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||busy)return;if(b.dataset.act==="ded"){abreDed(b.dataset.id);return}busy=1;b.disabled=true;b.textContent="…";
   const x=L.find(y=>String(y.id)===b.dataset.id)||{},who={dev:DEV,artista:x.a||""};let q=null;
   try{const p=await perm(who);const pj=await p.json().catch(()=>({}));if(p.status===429){fail(b,pj.detail||"Ahora no se puede pedir. Prueba más tarde.");busy=0;return}if(p.ok)q=pj.quedan}
   catch(_){/* si el servidor de límites no responde, se pide igual */}
@@ -173,6 +195,30 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
    if(r.ok&&j.success!==false){b.textContent="✓ Pedida";msg.className="rq-msg ok";msg.textContent="¡Hecho! Tu canción sonará en las próximas canciones de ONDA SONIKA 📻"+(q===0?" (Hoy ya no te quedan más peticiones.)":q===1?" (Te queda 1 petición hoy.)":"")}
    else{perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}}
   catch(_){perm({...who,cancelar:1}).catch(()=>{});fail(b,"Esta canción o este artista ha sonado hace poco. Prueba con otra o vuelve en un rato.")}busy=0});
+ /* ===== Dedicar canción con tu voz ===== */
+ const $d=id=>document.getElementById(id),D={song:null,blob:null,rec:null,t:null};
+ function okSend(){$d("dSend").disabled=!(D.blob&&$d("dOk").checked&&$d("dPara").value.trim())}
+ function abreDed(id){const x=L.find(y=>String(y.id)===String(id));if(!x)return;D.song=x;$d("dSong").textContent=x.t+" · "+x.a;$d("ded").hidden=false;$d("dMsg").textContent="";okSend();$d("ded").scrollIntoView({behavior:"smooth",block:"center"})}
+ ["dPara","dOk"].forEach(i=>$d(i).addEventListener("input",okSend));$d("dOk").addEventListener("change",okSend);
+ $d("dX").onclick=()=>{$d("ded").hidden=true;if(D.rec&&D.rec.state==="recording")D.rec.stop()};
+ $d("dRec").onclick=async()=>{const btn=$d("dRec");
+  if(D.rec&&D.rec.state==="recording"){D.rec.stop();return}
+  let st;try{st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}catch(_){$d("dMsg").className="rq-msg err";$d("dMsg").textContent="Necesitamos permiso para usar el micrófono.";return}
+  const mt=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||"";
+  const ch=[];D.rec=new MediaRecorder(st,mt?{mimeType:mt}:{});D.rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  D.rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());clearInterval(D.t);btn.classList.remove("on");btn.textContent="🎙️ Grabar otra vez";
+   D.blob=new Blob(ch,{type:D.rec.mimeType||mt||"audio/webm"});$d("dPrev").src=URL.createObjectURL(D.blob);$d("dPrev").hidden=false;$d("dTime").textContent="Escúchalo antes de enviar 👇";okSend()};
+  D.rec.start();btn.classList.add("on");btn.textContent="⏹ Parar";const t0=Date.now();
+  D.t=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$d("dTime").textContent="Grabando… "+s+" / 20 s";if(s>=20&&D.rec.state==="recording")D.rec.stop()},250)};
+ $d("dSend").onclick=async()=>{const b=$d("dSend"),m=$d("dMsg");b.disabled=true;b.textContent="Revisando tu mensaje…";m.textContent="";
+  const ext=(D.blob.type.includes("mp4")?"m4a":"webm"),fd=new FormData();
+  fd.append("meta",JSON.stringify({id:D.song.id,artista:D.song.a,titulo:D.song.t,para:$d("dPara").value.trim(),de:$d("dDe").value.trim(),consent:true,dev:DEV}));fd.append("voz",D.blob,"voz."+ext);
+  try{const r=await fetch("https://radio.ondasonika.com:9443/api/dedicar",{method:"POST",body:fd});const j=await r.json().catch(()=>({}));
+   if(r.ok){m.className="rq-msg ok";m.textContent="¡Listo! 💌 Tu dedicatoria y «"+D.song.t+"» sonarán en las próximas canciones de ONDA SONIKA. ¡Dale al play arriba y avisa a "+$d("dPara").value.trim()+"!";b.textContent="✓ Enviada";D.blob=null;return}
+   m.className="rq-msg err";m.textContent=(r.status===422?"🚫 ":"")+(j.detail||"No se ha podido enviar. Prueba otra vez.")}
+  catch(_){m.className="rq-msg err";m.textContent="No se ha podido enviar. Revisa tu conexión y prueba otra vez."}
+  b.textContent="Enviar dedicatoria";okSend()};
+
 })();
 if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADORES.map(s=>{
  const h=s.url||(s.wa?"https://wa.me/"+s.wa:(s.tel?"tel:"+s.tel:""));

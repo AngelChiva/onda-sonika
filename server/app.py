@@ -2,7 +2,7 @@
 Recibe las felicitaciones de la web, hace el autotune, muestra la mini app de Ángel (Sí/No),
 programa las aceptadas en AzuraCast y sirve la página para que el oyente escuche/descargue su audio.
 """
-import base64, datetime as dt, io, json, os, random, secrets, shutil, string, subprocess, threading, time, urllib.parse, urllib.request
+import base64, datetime as dt, io, json, os, random, secrets, shutil, string, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from collections import defaultdict, deque
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -281,8 +281,10 @@ def programar(m):
 def limpieza():
     while True:
         lim = time.time() - BORRAR_DIAS * 86400
-        for d in (DATA / "pend").iterdir():
-            if d.is_dir() and d.stat().st_mtime < lim: shutil.rmtree(d, ignore_errors=True)
+        for base in (DATA / "pend", DATA / "dedicar"):
+            if not base.exists(): continue
+            for d in base.iterdir():
+                if d.is_dir() and d.stat().st_mtime < lim: shutil.rmtree(d, ignore_errors=True)
         time.sleep(86400)
 threading.Thread(target=limpieza, daemon=True).start()
 
@@ -343,7 +345,7 @@ h1{{font-size:26px;margin:14px 0 6px}}p{{color:var(--mut);line-height:1.45}}audi
 # y se guarda la lista completa para la web.
 PET_NOMBRE = "Peticiones (no tocar)"
 # Fuera de peticiones: cuñas, identificativos, felicitaciones y lo que aún no está listo (La Fiesta, Nocturna)
-NO_MUSICA = ("7 Identificativos", "8 Anuncios", "10 Dedicatorias", "3 La Fiesta", "4 Sonika Nocturna")
+NO_MUSICA = ("7 Identificativos", "8 Anuncios", "10 Dedicatorias", "11 Dedicar cancion", "3 La Fiesta", "4 Sonika Nocturna")
 _canciones = {"lista": [], "hora": None}
 
 def _sync_canciones():
@@ -367,7 +369,7 @@ def _sync_canciones():
 def _bucle_canciones():
     while True:
         try:
-            if az_key(): _sync_canciones()
+            if az_key(): _sync_canciones(); _borra_dedicatorias_viejas()
         except Exception as e: print("canciones:", e)
         time.sleep(600)
 threading.Thread(target=_bucle_canciones, daemon=True).start()
@@ -376,6 +378,119 @@ threading.Thread(target=_bucle_canciones, daemon=True).start()
 def canciones():
     return JSONResponse({"canciones": _canciones["lista"], "actualizado": _canciones["hora"]},
                         headers={"Cache-Control": "public, max-age=300"})
+
+# ---------- Dedicar una canción ----------
+# El oyente elige una canción, graba un mensaje corto (sin música) y suena su voz justo antes de la canción.
+# Mismo filtro que las felicitaciones. El mensaje se borra de la radio al día siguiente.
+DED_PLAYLIST = "Dedicar canción (no tocar)"
+DED_CARPETA = "11 Dedicar cancion"
+
+def az_msg(e):
+    try: return json.loads(e.read().decode()).get("formatted_message") or str(e)
+    except Exception: return str(e)
+
+def _ded_pl():
+    return next((p["id"] for p in az("GET", "/playlists") if p.get("name") == DED_PLAYLIST), None)
+
+@app.post("/api/dedicar")
+async def dedicar(req: Request):
+    ip = ip_of(req); limit(ip, 6, 3600)
+    if not az_key(): raise HTTPException(503, "Ahora mismo no se pueden dedicar canciones. Prueba más tarde.")
+    form = await req.form()
+    try: meta = json.loads(form.get("meta") or "{}")
+    except Exception: raise HTTPException(400, "Datos no válidos")
+    clean = lambda x, n=30: " ".join(str(x or "").split())[:n]
+    m = {"cancion_id": str(meta.get("id", ""))[:40], "artista": clean(meta.get("artista"), 80), "titulo": clean(meta.get("titulo"), 80),
+         "de": clean(meta.get("de")), "para": clean(meta.get("para")), "consent": bool(meta.get("consent"))}
+    dev = str(meta.get("dev", ""))[:40] or "?"
+    if not m["cancion_id"] or not m["para"] or not m["consent"]: raise HTTPException(400, "Faltan datos")
+    voz = form.get("voz")
+    if voz is None: raise HTTPException(400, "Falta el audio")
+    code = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    tmp = DATA / "dedicar" / code; tmp.mkdir(parents=True, exist_ok=True)
+    raw = tmp / "raw"; raw.write_bytes(await voz.read())
+    m.update(code=code, creado=dt.datetime.now(TZ).isoformat(timespec="minutes"))
+    guarda = lambda: (tmp / "meta.json").write_text(json.dumps(m, ensure_ascii=False, indent=1))
+    try:
+        w16 = tmp / "v16.wav"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(raw), "-ac", "1", "-ar", "16000", str(w16)], check=True)
+        y, sr = sf.read(w16, dtype="float32")
+    except Exception:
+        shutil.rmtree(tmp, ignore_errors=True); raise HTTPException(400, "No hemos podido leer la grabación. Prueba otra vez.")
+    if len(y) / sr > 30: shutil.rmtree(tmp, ignore_errors=True); raise HTTPException(413, "El mensaje es demasiado largo (máximo 20 segundos).")
+    # límites del día (cuenta como una de las 2 peticiones)
+    ahora = dt.datetime.now(TZ); art = _norm(m["artista"])
+    with _ped_lock:
+        if _ped["dia"] != ahora.date(): _ped.update(dia=ahora.date(), dev=defaultdict(int), ip=defaultdict(int), art={})
+        if _ped["dev"][dev] >= PEDIR_DIA or _ped["ip"][ip] >= PEDIR_IP_DIA:
+            shutil.rmtree(tmp, ignore_errors=True); raise HTTPException(429, f"Ya has pedido {PEDIR_DIA} canciones hoy. ¡Mañana puedes pedir más! 📻")
+        ult = _ped["art"].get(art)
+        if art and ult and (ahora - ult).total_seconds() < ARTISTA_MIN * 60:
+            shutil.rmtree(tmp, ignore_errors=True); raise HTTPException(429, "Este artista ya se ha pedido hace poco. Prueba con otra canción o vuelve en un rato.")
+        _ped["dev"][dev] += 1; _ped["ip"][ip] += 1
+        if art: _ped["art"][art] = ahora
+    def suelta():
+        with _ped_lock:
+            _ped["dev"][dev] = max(0, _ped["dev"][dev] - 1); _ped["ip"][ip] = max(0, _ped["ip"][ip] - 1); _ped["art"].pop(art, None)
+    # filtro automático
+    from moderar import transcribir, revisar, MSG
+    try: texto = transcribir(y, sr)
+    except Exception as e: texto = ""; m["error"] = f"transcripción: {e}"
+    ok, razon = revisar(texto)
+    if ok and (m["de"] or m["para"]):
+        okn, rn = revisar(m["de"] + " " + m["para"])
+        if not okn and not rn.startswith("no se entiende"): ok, razon = False, "nombre: " + rn
+    m["texto"] = texto
+    if not ok:
+        suelta(); m.update(estado="rechazada", razon=razon); guarda(); raw.unlink(missing_ok=True); w16.unlink(missing_ok=True)
+        raise HTTPException(422, "No hemos entendido bien tu mensaje. Grábalo otra vez hablando cerca del móvil." if razon.startswith("no se entiende") else MSG)
+    # voz de radio: corta el clic del principio, limpia ruido, comprime y deja el volumen fijo
+    mp3 = tmp / "voz.mp3"
+    af = ("highpass=f=90,afftdn=nf=-25,"
+          "silenceremove=start_periods=1:start_threshold=-42dB:start_silence=0.03,areverse,"
+          "silenceremove=start_periods=1:start_threshold=-42dB:start_silence=0.15,areverse,"
+          "equalizer=f=150:t=q:w=1:g=3,equalizer=f=3200:t=q:w=1:g=3,"
+          "acompressor=threshold=-22dB:ratio=4:attack=5:release=120,afade=t=in:d=0.03,loudnorm=I=-15:TP=-1.5:LRA=7")
+    try:
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "0.2", "-i", str(raw), "-af", af, "-ar", "44100", "-ac", "2", "-b:a", "160k",
+                        "-metadata", f"title=Dedicatoria para {m['para']}", "-metadata", f"artist=Dedicatoria ONDA SONIKA {code}", str(mp3)], check=True)
+    except Exception:
+        suelta(); raise HTTPException(500, "No hemos podido preparar el audio. Prueba otra vez.")
+    # a la radio: sube el mensaje, lo pide y justo después pide la canción
+    try:
+        pl = _ded_pl()
+        if pl is None: raise RuntimeError("falta la lista " + DED_PLAYLIST)
+        up = az("POST", "/files", {"path": f"{DED_CARPETA}/{code}.mp3", "file": base64.b64encode(mp3.read_bytes()).decode()})
+        fid = up.get("id"); az("PUT", f"/file/{fid}", {"playlists": [{"id": pl}]})
+        uid = az("GET", f"/file/{fid}").get("unique_id")
+        m["file_id"] = fid
+        az("POST", f"/request/{uid}")
+    except urllib.error.HTTPError as e:
+        suelta(); m.update(estado="error", error=az_msg(e)); guarda(); raise HTTPException(502, "Ahora no se puede enviar a la radio. Prueba en un rato.")
+    except Exception as e:
+        suelta(); m.update(estado="error", error=str(e)); guarda(); raise HTTPException(502, "Ahora no se puede enviar a la radio. Prueba en un rato.")
+    try:
+        az("POST", f"/request/{m['cancion_id']}")
+    except Exception as e:
+        # la canción no se puede pedir ahora: se anula el mensaje
+        try:
+            for r in az("GET", "/reports/requests?type=pending"):
+                if (r.get("track") or {}).get("unique_id") == uid or str((r.get("track") or {}).get("id")) == str(fid): az("DELETE", f"/reports/requests/{r['request_id'] if 'request_id' in r else r['id']}")
+        except Exception: pass
+        try: az("DELETE", f"/file/{fid}")
+        except Exception: pass
+        suelta(); m.update(estado="cancion_no_disponible", error=az_msg(e) if isinstance(e, urllib.error.HTTPError) else str(e)); guarda()
+        raise HTTPException(409, "Esta canción o este artista ha sonado hace poco. Elige otra y vuelve a enviarla.")
+    m["estado"] = "en_cola"; guarda(); raw.unlink(missing_ok=True); w16.unlink(missing_ok=True)
+    return {"ok": True, "code": code}
+
+def _borra_dedicatorias_viejas():
+    try:
+        for f in az("GET", "/files"):
+            if str(f.get("path", "")).startswith(DED_CARPETA + "/") and (f.get("uploaded_at") or 0) < time.time() - 86400:
+                try: az("DELETE", f"/file/{f['id']}")
+                except Exception as e: print("borrar dedicatoria:", e)
+    except Exception as e: print("dedicatorias viejas:", e)
 
 # precarga el modelo de voz a texto al arrancar, para que la primera felicitación no tarde
 def _precarga():
