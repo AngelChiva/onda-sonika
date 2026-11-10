@@ -63,6 +63,8 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
     <div class="chk"><input type="checkbox" id="oBreath" checked><span>Quitar respiraciones</span></div>
     <div class="chk"><input type="checkbox" id="oClean" checked><span>Limpiar ruido de fondo y los «clic» del micro al empezar y acabar</span></div>
     <div class="chk"><input type="checkbox" id="oRadio" checked><span>Voz de radio (presencia, compresión y volumen fijo)</span></div>
+    <div class="ctl"><label>Cortar al principio (clic del botón de grabar) <span id="vCi">0.30 s</span></label><input type="range" id="ci" min="0" max="1" step="0.05" value="0.3"></div>
+    <div class="ctl"><label>Cortar al final (clic al soltar) <span id="vCf">0.20 s</span></label><input type="range" id="cf" min="0" max="1" step="0.05" value="0.2"></div>
     <div class="ctl"><label>Limpieza de ruido <span id="vNr">Fuerte</span></label><input type="range" id="nr" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Efecto locutor <span id="vFx">Locutor</span></label><input type="range" id="fx" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Eco de estudio (reverb) <span id="vRv">Poco</span></label><input type="range" id="rv" min="0" max="3" step="1" value="1"></div>
@@ -168,7 +170,7 @@ function cutEdges(d){const N=Math.round(SR*.01),fr=Math.floor(d.length/N),r=new 
  let a=-1,b=-1;for(let k=0;k+RUN<=fr;k++){let ok=true;for(let j=0;j<RUN;j++)if(r[k+j]<th){ok=false;break}if(ok){a=k;break}}
  for(let k=fr-RUN;k>=0;k--){let ok=true;for(let j=0;j<RUN;j++)if(r[k+j]<th){ok=false;break}if(ok){b=k+RUN;break}}
  if(a<0||b<=a)return trim(d);
- const st=Math.max(0,(a-6)*N),en=Math.min(d.length,(b+15)*N),o=d.slice(st,en),fi=Math.round(SR*.02),fo=Math.round(SR*.08);
+ const st=Math.max(0,(a-3)*N),en=Math.min(d.length,(b+15)*N),o=d.slice(st,en),fi=Math.round(SR*.03),fo=Math.round(SR*.08);
  for(let i=0;i<fi&&i<o.length;i++)o[i]*=i/fi;for(let i=0;i<fo&&i<o.length;i++)o[o.length-1-i]*=i/fo;return o}
 /* FFT radix-2 */
 function fft(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}
@@ -190,7 +192,7 @@ function plateIR(ctx,sec){const n=Math.round(SR*sec),b=ctx.createBuffer(1,n,SR),
  for(let i=0;i<n;i++){const t=i/n;lp+=( (Math.random()*2-1)-lp)*.5;x[i]=lp*Math.pow(1-t,3.2)*(i<SR*.012?0:1)}return b}
 function rmsDb(d){let s=0,n=0;for(let i=0;i<d.length;i++){const v=d[i];if(Math.abs(v)>.01){s+=v*v;n++}}return 10*Math.log10(s/Math.max(1,n)+1e-12)}
 
-async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);const clean=$('#oClean').checked,nr=+$('#nr').value,fx=+$('#fx').value,rv=+$('#rv').value;
+async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);{const a=Math.round(SR* +$('#ci').value),b=Math.round(SR* +$('#cf').value);if(v.length>a+b+SR*.5)v=v.slice(a,v.length-b);}const clean=$('#oClean').checked,nr=+$('#nr').value,fx=+$('#fx').value,rv=+$('#rv').value;
  v=clean?cutEdges(v):trim(v);
  if(clean)v=denoise(v,nr);
  if($('#oBreath').checked)v=deBreath(v);if(clean)v=gate(v);
@@ -216,6 +218,7 @@ async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);co
  const k=Math.pow(10,(-17-rmsDb(d))/20);let pk=0;for(let i=0;i<d.length;i++){d[i]*=k;pk=Math.max(pk,Math.abs(d[i]))}if(pk>.89)for(let i=0;i<d.length;i++)d[i]*=.89/pk;return d}
 
 const NAMES={nr:['Apagada','Suave','Fuerte','Máxima'],fx:['Natural','Radio','Locutor','Máximo'],rv:['Sin eco','Poco','Medio','Mucho']};
+['ci','cf'].forEach(id=>{const u=()=>$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=(+$('#'+id).value).toFixed(2)+' s';$('#'+id).addEventListener('input',u);u()});
 ['nr','fx','rv'].forEach(id=>{const u=()=>$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=NAMES[id][+$('#'+id).value];$('#'+id).addEventListener('input',u);u()});
 
 $('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#prev').hidden=true;$('#stale').hidden=true;await new Promise(r=>setTimeout(r,30));
