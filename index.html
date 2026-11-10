@@ -211,13 +211,23 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
   D.rec.start();btn.classList.add("on");btn.textContent="⏹ Parar";const t0=Date.now();
   D.t=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$d("dTime").textContent="Grabando… "+s+" / 20 s";if(s>=20&&D.rec.state==="recording")D.rec.stop()},250)};
  $d("dSend").onclick=async()=>{const b=$d("dSend"),m=$d("dMsg");b.disabled=true;b.textContent="Revisando tu mensaje…";m.textContent="";
-  const ext=(D.blob.type.includes("mp4")?"m4a":"webm"),fd=new FormData();
-  fd.append("meta",JSON.stringify({id:D.song.id,artista:D.song.a,titulo:D.song.t,para:$d("dPara").value.trim(),de:$d("dDe").value.trim(),consent:true,dev:DEV}));fd.append("voz",D.blob,"voz."+ext);
-  try{const r=await fetch("https://radio.ondasonika.com:9443/api/dedicar",{method:"POST",body:fd});const j=await r.json().catch(()=>({}));
+  const fd=new FormData();
+  fd.append("meta",JSON.stringify({id:D.song.id,artista:D.song.a,titulo:D.song.t,para:$d("dPara").value.trim(),de:$d("dDe").value.trim(),consent:true,dev:DEV}));
+  const ab=new AbortController(),to=setTimeout(()=>ab.abort(),90000);
+  try{fd.append("voz",await aWav(D.blob),"voz.wav");
+   const r=await fetch("https://radio.ondasonika.com:9443/api/dedicar",{method:"POST",body:fd,signal:ab.signal});clearTimeout(to);const j=await r.json().catch(()=>({}));
    if(r.ok){m.className="rq-msg ok";m.textContent="¡Listo! 💌 Tu dedicatoria y «"+D.song.t+"» sonarán en las próximas canciones de ONDA SONIKA. ¡Dale al play arriba y avisa a "+$d("dPara").value.trim()+"!";b.textContent="✓ Enviada";D.blob=null;return}
    m.className="rq-msg err";m.textContent=(r.status===422?"🚫 ":"")+(j.detail||"No se ha podido enviar. Prueba otra vez.")}
-  catch(_){m.className="rq-msg err";m.textContent="No se ha podido enviar. Revisa tu conexión y prueba otra vez."}
+  catch(e){clearTimeout(to);m.className="rq-msg err";m.textContent=e&&e.name==="AbortError"?"Está tardando demasiado. Revisa tu conexión y prueba otra vez.":"No se ha podido enviar. Revisa tu conexión y prueba otra vez."}
   b.textContent="Enviar dedicatoria";okSend()};
+ /* convierte la grabación a WAV (16 kHz, mono) en el móvil: más fiable en iPhone y pesa poco */
+ async function aWav(blob){const buf=await blob.arrayBuffer();let au;
+  try{const C=window.AudioContext||window.webkitAudioContext,c=new C();au=await new Promise((ok,ko)=>{const p=c.decodeAudioData(buf.slice(0),ok,ko);if(p&&p.then)p.then(ok,ko)});c.close&&c.close()}catch(_){return new Blob([buf],{type:blob.type||"application/octet-stream"})}
+  const sr=16000,n=Math.max(1,Math.round(au.duration*sr)),x=new Float32Array(n),ch=au.numberOfChannels,r=au.sampleRate/sr;
+  for(let c=0;c<ch;c++){const d=au.getChannelData(c);for(let i=0;i<n;i++){const p=i*r,k=Math.floor(p),f=p-k;x[i]+=((d[k]||0)*(1-f)+(d[k+1]||0)*f)/ch}}
+  const b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++)v.setInt16(44+i*2,Math.max(-1,Math.min(1,x[i]))*32767,true);return new Blob([b],{type:"audio/wav"})}
 
 })();
 if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADORES.map(s=>{
