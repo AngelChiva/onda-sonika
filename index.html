@@ -268,11 +268,12 @@ if("mediaSession" in navigator){try{navigator.mediaSession.setActionHandler("pla
 const P=[
  {n:"Sonika Non Stop",m:"Éxitos latinos, urbano y lo más viral del momento",d:"Todos los días",h:"24 horas"},
  {n:"Momento Remember",m:"Un clásico y un dance de los 90 para recordar",d:"Todos los días",h:"10, 14, 18 y 22 h"},
+ {n:"Viernes Remember 90",m:"Dos horas seguidas de dance de los 90 para empezar el finde",d:"Viernes",h:"19:00 – 21:00"},
  {n:"Tendencias Sonika",m:"Los temas que más suenan, más a menudo",d:"Todos los días",h:"cada 30 min · 8:00 – 24:00"},
  {n:"La Fiesta Sonika",m:"Dance, remember y flamenco house para darlo todo",d:"Muy pronto",h:"viernes a domingo por la noche",soon:1}
 ];
 function draw(){const n=new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Madrid"}));const h=n.getHours(),mi=n.getMinutes();
- const pr=([10,14,18,22].includes(h)&&mi>=10&&mi<50)?1:0;document.getElementById("parrilla").innerHTML=P.map((p,i)=>{const now=i===pr;
+ const vr=n.getDay()===5&&h>=19&&h<21;const pr=vr?2:(([10,14,18,22].includes(h)&&mi>=10&&mi<50)?1:0);document.getElementById("parrilla").innerHTML=P.map((p,i)=>{const now=i===pr;
  return `<div class="slot${now?" now":""}"${p.soon?' style="opacity:.6"':''}><div><b>${p.n}</b><span>${p.d} · ${p.h}</span><em>${p.m}</em></div>${now?'<i class="tag">AHORA</i>':(p.soon?'<i class="tag" style="background:#333;color:#ffb347">PRONTO</i>':'')}</div>`}).join("")}
 draw();setInterval(draw,60000);
 </script>
