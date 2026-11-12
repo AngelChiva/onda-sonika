@@ -345,7 +345,7 @@ h1{{font-size:26px;margin:14px 0 6px}}p{{color:var(--mut);line-height:1.45}}audi
 # y se guarda la lista completa para la web.
 PET_NOMBRE = "Peticiones (no tocar)"
 # Fuera de peticiones: cuñas, identificativos, felicitaciones y lo que aún no está listo (La Fiesta, Nocturna)
-NO_MUSICA = ("7 Identificativos", "8 Anuncios", "10 Dedicatorias", "11 Dedicar cancion", "3 La Fiesta", "4 Sonika Nocturna")
+NO_MUSICA = ("7 Identificativos", "8 Anuncios", "10 Dedicatorias", "11 Dedicar cancion", "12 Promos", "3 La Fiesta", "4 Sonika Nocturna")
 _canciones = {"lista": [], "hora": None}
 
 def _sync_canciones():
