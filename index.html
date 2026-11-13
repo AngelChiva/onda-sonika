@@ -264,7 +264,8 @@ if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADO
  return h?`<a class="sp" href="${h}" target="_blank" rel="noopener">${inner}</a>`:`<div class="sp">${inner}</div>`}).join("");
  document.getElementById("patro").hidden=false}
 const BASE="https://radio.ondasonika.com", EST="onda_sonika";
-const STREAM=BASE+"/listen/"+EST+"/radio.mp3", NP=BASE+"/api/nowplaying/"+EST;
+const MOVIL=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent), MP3=BASE+"/listen/"+EST+"/radio.mp3", AAC=BASE+"/listen/"+EST+"/movil.aac";
+let STREAM=(MOVIL&&document.createElement("audio").canPlayType("audio/aac"))?AAC:MP3; const NP=BASE+"/api/nowplaying/"+EST;
 const a=document.getElementById("audio"),btn=document.getElementById("btn"),ico=document.getElementById("ico"),
  est=document.getElementById("estado"),pl=document.getElementById("player");
 const PLAY='<path d="M8 5v14l11-7z"/>',PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
@@ -272,7 +273,7 @@ let on=false;
 /* reconexión automática: si se pierde la cobertura (coche, túneles…) vuelve a conectar sola */
 let quiere=false,rt=null,intentos=0,espera=null;
 function conecta(){clearTimeout(rt);a.src=STREAM+"?t="+Date.now();a.play().then(()=>{intentos=0;set(true)}).catch(()=>reintenta())}
-function reintenta(){if(!quiere)return;clearTimeout(rt);est.textContent="RECONECTANDO…";const d=Math.min(1000*Math.pow(1.6,intentos++),8000);rt=setTimeout(conecta,d)}
+function reintenta(){if(!quiere)return;if(STREAM===AAC&&intentos>=2)STREAM=MP3;clearTimeout(rt);est.textContent="RECONECTANDO…";const d=Math.min(1000*Math.pow(1.6,intentos++),8000);rt=setTimeout(conecta,d)}
 btn.onclick=()=>{
   if(quiere){quiere=false;clearTimeout(rt);clearTimeout(espera);a.pause();a.removeAttribute("src");a.load();return set(false)}
   quiere=true;intentos=0;est.textContent="CONECTANDO…";
