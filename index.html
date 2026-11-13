@@ -269,12 +269,22 @@ const a=document.getElementById("audio"),btn=document.getElementById("btn"),ico=
  est=document.getElementById("estado"),pl=document.getElementById("player");
 const PLAY='<path d="M8 5v14l11-7z"/>',PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
 let on=false;
+/* reconexión automática: si se pierde la cobertura (coche, túneles…) vuelve a conectar sola */
+let quiere=false,rt=null,intentos=0,espera=null;
+function conecta(){clearTimeout(rt);a.src=STREAM+"?t="+Date.now();a.play().then(()=>{intentos=0;set(true)}).catch(()=>reintenta())}
+function reintenta(){if(!quiere)return;clearTimeout(rt);est.textContent="RECONECTANDO…";const d=Math.min(1000*Math.pow(1.6,intentos++),8000);rt=setTimeout(conecta,d)}
 btn.onclick=()=>{
-  if(on){a.pause();a.removeAttribute("src");a.load();return set(false)}
-  a.src=STREAM+"?t="+Date.now();est.textContent="CONECTANDO…";
-  a.play().then(()=>set(true)).catch(()=>{est.textContent="EN PRUEBAS · VUELVE PRONTO";set(false,true)});
+  if(quiere){quiere=false;clearTimeout(rt);clearTimeout(espera);a.pause();a.removeAttribute("src");a.load();return set(false)}
+  quiere=true;intentos=0;est.textContent="CONECTANDO…";
+  a.src=STREAM+"?t="+Date.now();
+  a.play().then(()=>set(true)).catch(e=>{if(e&&e.name==="NotAllowedError"){quiere=false;set(false)}else reintenta()});
 };
-a.onerror=()=>{if(on){est.textContent="EN PRUEBAS · VUELVE PRONTO";set(false,true)}};
+a.addEventListener("error",()=>reintenta());
+a.addEventListener("ended",()=>reintenta());
+a.addEventListener("stalled",()=>{if(quiere){clearTimeout(espera);espera=setTimeout(()=>{if(quiere&&a.readyState<3)reintenta()},6000)}});
+a.addEventListener("waiting",()=>{if(quiere){est.textContent="CARGANDO…";clearTimeout(espera);espera=setTimeout(()=>{if(quiere&&a.readyState<3)reintenta()},8000)}});
+a.addEventListener("playing",()=>{clearTimeout(espera);intentos=0;if(quiere)set(true)});
+window.addEventListener("online",()=>{if(quiere)conecta()});
 function set(v,keep){on=v;ico.innerHTML=v?PAUSE:PLAY;btn.classList.toggle("on",v);pl.classList.toggle("on-air",v);if(v)est.textContent="EN DIRECTO";else if(!keep)est.textContent="DALE AL PLAY"}
 document.getElementById("vol").oninput=e=>a.volume=e.target.value;
 (function(){const t=new Audio();t.volume=0.5;const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
