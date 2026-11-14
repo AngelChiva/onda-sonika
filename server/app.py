@@ -341,7 +341,7 @@ h1{{font-size:26px;margin:14px 0 6px}}p{{color:var(--mut);line-height:1.45}}audi
 
 # ---------- Pide tu canción: lista completa de canciones ----------
 # AzuraCast solo enseña en su lista pública las canciones de las listas que suenan en ese momento.
-# Aquí: cada 10 minutos se mete toda la música en la lista "Peticiones (no tocar)" (también lo que Ángel suba nuevo)
+# Aquí: cada 30 minutos se mete toda la música en la lista "Peticiones (no tocar)" (también lo que Ángel suba nuevo)
 # y se guarda la lista completa para la web.
 PET_NOMBRE = "Peticiones (no tocar)"
 # Fuera de peticiones: cuñas, identificativos, felicitaciones y lo que aún no está listo (La Fiesta, Nocturna)
@@ -371,7 +371,7 @@ def _bucle_canciones():
         try:
             if az_key(): _sync_canciones(); _borra_dedicatorias_viejas()
         except Exception as e: print("canciones:", e)
-        time.sleep(600)
+        time.sleep(1800)  # cada 30 min: menos carga para el servidor de la radio
 threading.Thread(target=_bucle_canciones, daemon=True).start()
 
 @app.get("/api/canciones")
