@@ -73,7 +73,7 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
 @keyframes pulso{50%{opacity:.7}}
 [hidden]{display:none!important}
 /* ¿Quieres salir en la radio? */
-#enantena{margin-top:18px}
+#enantena{margin-top:18px;display:none} /* peticiones apagadas (14/11) */
 .ox{position:relative;display:block;margin-top:12px;padding:18px;border-radius:22px;color:var(--txt);text-decoration:none;overflow:hidden;border:1.5px solid transparent;
  background:linear-gradient(160deg,#1a1418,#121113) padding-box,linear-gradient(135deg,#ffb347,#ff4d94 55%,#8a2be2) border-box}
 .ox:before{content:"";position:absolute;right:-70px;top:-90px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,77,148,.28),transparent);pointer-events:none}
@@ -260,7 +260,7 @@ if(PATROCINADORES.length){document.getElementById("spons").innerHTML=PATROCINADO
  document.getElementById("patro").hidden=false}
 const BASE="https://radio.ondasonika.com", EST="onda_sonika";
 const MOVIL=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent), MP3=BASE+"/listen/"+EST+"/radio.mp3", AAC=BASE+"/listen/"+EST+"/movil.aac";
-let STREAM=(MOVIL&&document.createElement("audio").canPlayType("audio/aac"))?AAC:MP3; const NP=BASE+"/api/nowplaying/"+EST;
+let STREAM=MP3; // emisión móvil apagada (14/11): para volver, usar AAC en móviles const NP=BASE+"/api/nowplaying/"+EST;
 const a=document.getElementById("audio"),btn=document.getElementById("btn"),ico=document.getElementById("ico"),
  est=document.getElementById("estado"),pl=document.getElementById("player");
 const PLAY='<path d="M8 5v14l11-7z"/>',PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
