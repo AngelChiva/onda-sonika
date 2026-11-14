@@ -79,8 +79,12 @@ async def tune(req: Request):
     buf = io.BytesIO(); sf.write(buf, out, sr, format="WAV", subtype="PCM_16")
     return Response(buf.getvalue(), media_type="audio/wav")
 
+# Felicitaciones y dedicatorias con voz: apagadas por ahora (Ángel, 14/11). Poner True para volver a activarlas.
+DEDICATORIAS_ACTIVAS = False
+
 @app.post("/api/dedica")
 async def dedica(req: Request):
+    if not DEDICATORIAS_ACTIVAS: raise HTTPException(503, "Las dedicatorias no están disponibles ahora mismo.")
     """Recibe la felicitación (multipart: meta, mix, voz), la revisa sola y, si está limpia, la programa en la radio."""
     limit(ip_of(req), 6, 3600)
     form = await req.form()
@@ -394,6 +398,7 @@ def _ded_pl():
 
 @app.post("/api/dedicar")
 async def dedicar(req: Request):
+    if not DEDICATORIAS_ACTIVAS: raise HTTPException(503, "Las dedicatorias no están disponibles ahora mismo.")
     ip = ip_of(req); limit(ip, 6, 3600)
     if not az_key(): raise HTTPException(503, "Ahora mismo no se pueden dedicar canciones. Prueba más tarde.")
     form = await req.form()
@@ -511,4 +516,4 @@ def _precarga():
     try:
         from moderar import transcribir; transcribir(np.zeros(16000, dtype="float32"), 16000)
     except Exception as e: print("precarga whisper:", e)
-threading.Thread(target=_precarga, daemon=True).start()
+if DEDICATORIAS_ACTIVAS: threading.Thread(target=_precarga, daemon=True).start()  # sin dedicatorias no se carga el modelo de voz: ahorra memoria

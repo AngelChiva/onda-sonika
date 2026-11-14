@@ -121,14 +121,9 @@ footer{margin-top:34px;text-align:center;color:var(--mut);font-size:12px}
 
 
   <section id="enantena">
-    <h2>¿QUIERES SALIR EN LA RADIO?</h2>
-    <a class="ox ox-feli" href="/dedica/">
-      <div class="ox-ic"><svg viewBox="0 0 64 64" width="40" height="40" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><rect x="23" y="8" width="18" height="30" rx="9"/><path d="M29 16h6M29 22h6M29 28h6" stroke-width="2.4" opacity=".75"/><path d="M16 30a16 16 0 0 0 32 0"/><path d="M32 46v9M24 56h16"/><path d="M52 10l1.6 3.4L57 15l-3.4 1.6L52 20l-1.6-3.4L47 15l3.4-1.6z" fill="#fff" stroke="none"/><path d="M11 40l1.1 2.4 2.4 1.1-2.4 1.1L11 47l-1.1-2.4L7.5 43.5l2.4-1.1z" fill="#fff" stroke="none"/></svg></div>
-      <div class="ox-tx"><i class="ox-tag">FELICITACIONES</i><b>Felicita a tu persona especial</b><span>Cumpleaños, aniversario o amor: graba tu mensaje con tu voz, ponle música y lo emitimos el día que elijas. Gratis.</span></div>
-      <span class="ox-go">Felicitar <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-    </a>
+    <h2>PIDE TU CANCIÓN</h2>
     <div class="ox ox-pide" id="pide">
-      <div class="ox-head"><div class="ox-ic ox-ic2"><svg viewBox="0 0 64 64" width="42" height="42" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><circle cx="32" cy="32" r="25"/><path d="M32 13a19 19 0 0 1 19 19" opacity=".7"/><path d="M13 32a19 19 0 0 0 19 19" opacity=".7"/><path d="M32 20a12 12 0 0 1 12 12" opacity=".45"/><path d="M32 41.5c-1-1-8.5-5.3-8.5-10.2a4.6 4.6 0 0 1 8.5-2.5 4.6 4.6 0 0 1 8.5 2.5c0 4.9-7.5 9.2-8.5 10.2z" fill="#fff" stroke="none"/></svg></div><div class="ox-tx"><i class="ox-tag">PETICIONES Y DEDICATORIAS</i><b>Pide o dedica tu canción</b><span>Búscala, pídela y, si quieres, dedícala con tu voz. Suena en las próximas canciones. Hasta 2 al día.</span></div></div>
+      <div class="ox-head"><div class="ox-ic ox-ic2"><svg viewBox="0 0 64 64" width="42" height="42" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><circle cx="32" cy="32" r="25"/><path d="M32 13a19 19 0 0 1 19 19" opacity=".7"/><path d="M13 32a19 19 0 0 0 19 19" opacity=".7"/><path d="M32 20a12 12 0 0 1 12 12" opacity=".45"/><path d="M32 41.5c-1-1-8.5-5.3-8.5-10.2a4.6 4.6 0 0 1 8.5-2.5 4.6 4.6 0 0 1 8.5 2.5c0 4.9-7.5 9.2-8.5 10.2z" fill="#fff" stroke="none"/></svg></div><div class="ox-tx"><i class="ox-tag">PETICIONES</i><b>Elige la próxima canción</b><span>Búscala y pídela. Suena en las próximas canciones. Hasta 2 al día.</span></div></div>
       <input type="search" id="rqQ" placeholder="Busca por canción o artista…" autocomplete="off">
       <div id="rqList" class="rq-list"></div>
       <p class="rq-msg" id="rqMsg"></p>
@@ -222,7 +217,7 @@ const PATROCINADORES=[          // se muestran en "Nos apoyan" (logo: imagen; bg
  const $d=id=>document.getElementById(id),D={song:null,blob:null,rec:null,t:null};
  const MICI='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>';const recLbl=t=>{$d("dRec").innerHTML=MICI+"<span>"+t+"</span>"};
  function okSend(){const ded=!!D.blob;$d("dOkL").hidden=!ded;$d("dSend").textContent=ded?"Pedir y dedicar":"Pedir canción";$d("dSend").disabled=ded&&!($d("dOk").checked&&$d("dPara").value.trim())}
- function abreDed(id){const x=L.find(y=>String(y.id)===String(id));if(!x)return;D.song=x;D.blob=null;$d("dPrev").hidden=true;$d("dTime").textContent="";recLbl("Grabar mensaje");$d("dOk").checked=false;$d("dSong").textContent=x.t+" · "+x.a;$d("dOpt").hidden=!DEDOK;$d("ded").hidden=false;$d("dMsg").textContent="";okSend();$d("ded").scrollIntoView({behavior:"smooth",block:"center"})}
+ function abreDed(id){const x=L.find(y=>String(y.id)===String(id));if(!x)return;D.song=x;D.blob=null;$d("dPrev").hidden=true;$d("dTime").textContent="";recLbl("Grabar mensaje");$d("dOk").checked=false;$d("dSong").textContent=x.t+" · "+x.a;$d("dOpt").hidden=true;$d("ded").hidden=false;$d("dMsg").textContent="";okSend();$d("ded").scrollIntoView({behavior:"smooth",block:"center"})}
  ["dPara","dOk"].forEach(i=>$d(i).addEventListener("input",okSend));$d("dOk").addEventListener("change",okSend);
  $d("dX").onclick=()=>{$d("ded").hidden=true;if(D.rec&&D.rec.state==="recording")D.rec.stop()};
  $d("dRec").onclick=async()=>{const btn=$d("dRec");
