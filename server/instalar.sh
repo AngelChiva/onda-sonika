@@ -1,10 +1,11 @@
 #!/bin/bash
 # ONDA SONIKA · instala el servidor de felicitaciones en el VPS (junto a AzuraCast)
-# Uso en la consola del VPS:  wget -O i2.sh ondasonika.com/server/instalar.sh && bash i2.sh
+# Uso: curl -fsSL https://raw.githubusercontent.com/AngelChiva/onda-sonika/main/server/instalar.sh -o /root/i.sh && bash /root/i.sh
 set -e
 D=/opt/dedica; mkdir -p $D/certs $D/data; cd $D
-for f in app.py tune.py requirements.txt Dockerfile docker-compose.yml certs.sh; do
-  wget -q -O $f "https://ondasonika.com/server/$f"
+B=https://raw.githubusercontent.com/AngelChiva/onda-sonika/main/server
+for f in app.py tune.py moderar.py requirements.txt Dockerfile docker-compose.yml certs.sh actualizar.sh; do
+  curl -fsSL "$B/$f?v=$(date +%s)" -o $f
 done
 chmod +x certs.sh
 ./certs.sh
@@ -25,5 +26,5 @@ echo
 echo "=============================================="
 echo " LISTO. Mini app:  https://radio.ondasonika.com:9443/admin"
 echo " Usuario: angel   Contraseña: $(grep ADMIN_PASS .env | cut -d= -f2)"
-echo " (apúntala; luego abre el puerto 9443 en el cortafuegos de IONOS)"
+echo " (apúntala)"
 echo "=============================================="
