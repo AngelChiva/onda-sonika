@@ -65,8 +65,8 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
     <div class="ctl"><label>Acortar pausas entre frases <span id="vPs">Un poco</span></label><input type="range" id="ps" min="0" max="3" step="1" value="1"></div>
     <div class="chk"><input type="checkbox" id="oClean" checked><span>Limpiar ruido de fondo y los «clic» del micro al empezar y acabar</span></div>
     <div class="chk"><input type="checkbox" id="oRadio" checked><span>Voz de radio (presencia, compresión y volumen fijo)</span></div>
-    <div class="ctl"><label>Cortar al principio (clic del botón de grabar) <span id="vCi">0.30 s</span></label><input type="range" id="ci" min="0" max="1" step="0.05" value="0.3"></div>
-    <div class="ctl"><label>Cortar al final (clic al soltar) <span id="vCf">0.20 s</span></label><input type="range" id="cf" min="0" max="1" step="0.05" value="0.2"></div>
+    <div class="ctl"><label>Cortar al principio (clic del botón de grabar) <span id="vCi">0.05 s</span></label><input type="range" id="ci" min="0" max="1" step="0.05" value="0.05"></div>
+    <div class="ctl"><label>Cortar al final (clic al soltar) <span id="vCf">0.00 s</span></label><input type="range" id="cf" min="0" max="1" step="0.05" value="0"></div>
     <div class="ctl"><label>Limpieza de ruido <span id="vNr">Fuerte</span></label><input type="range" id="nr" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Efecto locutor <span id="vFx">Locutor</span></label><input type="range" id="fx" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Eco de estudio (reverb) <span id="vRv">Poco</span></label><input type="range" id="rv" min="0" max="3" step="1" value="1"></div>
@@ -162,7 +162,8 @@ function deBreath(d,fuerte){const N=Math.round(SR*.02),fr=Math.floor(d.length/N)
  for(let k=0;k<fr;k++){const o=k*N;let s=0;for(let i=0;i<N;i++){const x=d[o+i];s+=x*x;}rms[k]=Math.sqrt(s/N);let best=0;const e0=s+1e-9;
   for(let lag=Math.floor(SR/500);lag<=Math.floor(SR/70);lag+=2){let c=0,e1=0;for(let i=0;i<N;i++){const a=d[o+i],b=d[o+i+lag]||0;c+=a*b;e1+=b*b;}const r=c/Math.sqrt(e0*(e1+1e-9));if(r>best)best=r;}vo[k]=best>.55?1:0;}
  const sp=[...rms].filter((_,k)=>vo[k]).sort((a,b)=>a-b),speech=sp.length?sp[Math.floor(sp.length*.5)]:0;if(!speech)return d;const lo=[...rms].sort((a,b)=>a-b)[Math.floor(fr*.05)]||0;
- const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*(fuerte?.62:.45)&&rms[k]>lo*1.4)?1:0;const g=new Float32Array(fr).fill(1);
+ const near=new Uint8Array(fr);for(let k=0;k<fr;k++)if(vo[k])for(let q=Math.max(0,k-4);q<=Math.min(fr-1,k+6);q++)near[q]=1;
+ const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&!near[k]&&rms[k]<speech*(fuerte?.62:.45)&&rms[k]>lo*1.4)?1:0;const g=new Float32Array(fr).fill(1);
  for(let k=0;k<fr;){if(!cand[k]){k++;continue}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=(fuerte?80:120))for(let q=k;q<j;q++)g[q]=fuerte?.02:.1;k=j}
  let cur=1;for(let k=0;k<fr;k++){const t=g[k];for(let i=0;i<N;i++){cur+=(t-cur)*.004;d[k*N+i]*=cur}}return d}
 function gate(d){const N=1024,fr=Math.floor(d.length/N),rms=[];for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v}rms.push(Math.sqrt(s/N))}
@@ -176,7 +177,8 @@ function cutEdges(d){const N=Math.round(SR*.01),fr=Math.floor(d.length/N),r=new 
  let a=-1,b=-1;for(let k=0;k+RUN<=fr;k++){let ok=true;for(let j=0;j<RUN;j++)if(r[k+j]<th){ok=false;break}if(ok){a=k;break}}
  for(let k=fr-RUN;k>=0;k--){let ok=true;for(let j=0;j<RUN;j++)if(r[k+j]<th){ok=false;break}if(ok){b=k+RUN;break}}
  if(a<0||b<=a)return trim(d);
- const st=Math.max(0,(a-3)*N),en=Math.min(d.length,(b+15)*N),o=d.slice(st,en),fi=Math.round(SR*.03),fo=Math.round(SR*.08);
+ const fl=so[Math.floor(fr*.1)]||0,tail=Math.max(fl*3,hi*.015,.0008);while(b<fr&&r[b]>tail)b++;
+ const st=Math.max(0,(a-5)*N),en=Math.min(d.length,(b+25)*N),o=d.slice(st,en),fi=Math.round(SR*.03),fo=Math.round(SR*.08);
  for(let i=0;i<fi&&i<o.length;i++)o[i]*=i/fi;for(let i=0;i<fo&&i<o.length;i++)o[o.length-1-i]*=i/fo;return o}
 /* FFT radix-2 */
 function fft(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}
