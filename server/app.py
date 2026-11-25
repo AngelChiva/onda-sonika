@@ -32,7 +32,7 @@ for d in ("pend",):
     (DATA / d).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(docs_url=None, redoc_url=None)
-app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["POST", "GET"], allow_headers=["Content-Type", "X-Meta"])
+app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["POST", "GET"], allow_headers=["Content-Type", "X-Meta", "X-Estudio"])
 security = HTTPBasic()
 
 # ---------- utilidades ----------
@@ -69,13 +69,24 @@ def read_audio(body: bytes):
     return y.mean(axis=1), sr
 
 # ---------- API pública ----------
+# Clave del estudio de cuñas de Ángel (sha256 de la clave que escribe en el estudio): permite audios largos y ajustes
+ESTUDIO_HASH = os.getenv("ESTUDIO_HASH", "76d416b905e8ae9d99f0462c0e8e2dde1fd7c9cd86d95d357d9211b1e1fe9872")
+
 @app.post("/api/tune")
-async def tune(req: Request):
-    limit(ip_of(req), 30, 3600)
+async def tune(req: Request, fuerza: float = 1.0, tono: float = 0.0):
+    import hashlib
+    estudio = hashlib.sha256((req.headers.get("x-estudio") or "").strip().lower().encode()).hexdigest() == ESTUDIO_HASH
+    limit(ip_of(req), 200 if estudio else 30, 3600)
     y, sr = read_audio(await req.body())
-    if len(y) / sr > 55: raise HTTPException(413, "Máximo 45 segundos")
-    from tune import autotune, detect_key
-    out = autotune(y, sr, strength=1.0, scale=detect_key(y, sr))
+    if len(y) / sr > (240 if estudio else 55): raise HTTPException(413, "Audio demasiado largo")
+    fuerza = min(1.0, max(0.0, fuerza)); tono = min(12.0, max(-12.0, tono))
+    out = y
+    if fuerza > 0:
+        from tune import autotune, detect_key
+        out = autotune(out, sr, strength=fuerza, scale=detect_key(out, sr))
+    if tono:
+        import librosa
+        out = librosa.effects.pitch_shift(out, sr=sr, n_steps=tono).astype(np.float32)
     buf = io.BytesIO(); sf.write(buf, out, sr, format="WAV", subtype="PCM_16")
     return Response(buf.getvalue(), media_type="audio/wav")
 

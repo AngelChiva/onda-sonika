@@ -60,7 +60,9 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
   <section class="box">
     <div class="num">PASO 1</div><h2>Voz del locutor</h2>
     <label class="drop" id="dVoz"><b>🎤 Sube el audio de la voz</b>mp3, wav, m4a… (o arrástralo aquí)<input type="file" id="fVoz" accept="audio/*"></label>
-    <div class="chk"><input type="checkbox" id="oBreath" checked><span>Quitar respiraciones</span></div>
+    <div class="chk"><input type="checkbox" id="oBreath" checked><span>Quitar respiraciones y suspiros</span></div>
+    <div class="ctl"><label>Respiraciones y suspiros <span id="vBr">Normal</span></label><input type="range" id="br" min="1" max="2" step="1" value="1"></div>
+    <div class="ctl"><label>Acortar pausas entre frases <span id="vPs">Un poco</span></label><input type="range" id="ps" min="0" max="3" step="1" value="1"></div>
     <div class="chk"><input type="checkbox" id="oClean" checked><span>Limpiar ruido de fondo y los «clic» del micro al empezar y acabar</span></div>
     <div class="chk"><input type="checkbox" id="oRadio" checked><span>Voz de radio (presencia, compresión y volumen fijo)</span></div>
     <div class="ctl"><label>Cortar al principio (clic del botón de grabar) <span id="vCi">0.30 s</span></label><input type="range" id="ci" min="0" max="1" step="0.05" value="0.3"></div>
@@ -68,6 +70,9 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
     <div class="ctl"><label>Limpieza de ruido <span id="vNr">Fuerte</span></label><input type="range" id="nr" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Efecto locutor <span id="vFx">Locutor</span></label><input type="range" id="fx" min="0" max="3" step="1" value="2"></div>
     <div class="ctl"><label>Eco de estudio (reverb) <span id="vRv">Poco</span></label><input type="range" id="rv" min="0" max="3" step="1" value="1"></div>
+    <div class="ctl"><label>Autotune <span id="vAt">Sin autotune</span></label><input type="range" id="at" min="0" max="3" step="1" value="0"></div>
+    <div class="ctl"><label>Tono de la voz <span id="vTn">Natural</span></label><input type="range" id="tn" min="-4" max="4" step="1" value="0"></div>
+    <p class="info" style="margin-top:4px">El autotune y el tono se hacen en el servidor de la radio: tarda unos segundos más.</p>
   </section>
 
   <section class="box">
@@ -87,6 +92,7 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
     <div class="ctl"><label>Música después de la voz <span id="vOut">4 s</span></label><input type="range" id="outro" min="0" max="10" step="0.5" value="4"></div>
     <div class="ctl"><label>Voz o música <span id="vBal">Equilibrado</span></label><input type="range" id="bal" min="-5" max="5" step="1" value="0">
       <div class="row info" style="margin-top:2px"><span>Más música</span><span>Más voz</span></div></div>
+    <div class="ctl"><label>Volumen final de la cuña <span id="vVol">Normal</span></label><input type="range" id="vol" min="-6" max="6" step="1" value="0"></div>
     <label style="display:block;font-size:14px;margin:14px 0 6px">Nombre del archivo</label>
     <input type="text" id="name" placeholder="Ej.: Cuña Corident noviembre">
     <button class="btn" id="go" disabled>🎧 Crear y escuchar la cuña</button>
@@ -108,7 +114,7 @@ canvas{width:100%;height:70px;margin-top:12px;border-radius:10px;background:#0f0
 /* ===== acceso ===== */
 const PIN_HASH="76d416b905e8ae9d";            // se compara con hash simple de la clave
 async function h(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.trim().toLowerCase()));return [...new Uint8Array(b)].slice(0,8).map(x=>x.toString(16).padStart(2,'0')).join('')}
-async function enter(){if(await h($('#pin').value)===PIN_HASH||localStorage.getItem('estudio')===PIN_HASH){try{localStorage.setItem('estudio',PIN_HASH)}catch(e){}$('#lock').hidden=true;$('#app').hidden=false}else $('#pinErr').textContent='Clave incorrecta'}
+async function enter(){try{if($('#pin').value.trim())localStorage.setItem('estudioPin',$('#pin').value.trim())}catch(e){}if(await h($('#pin').value)===PIN_HASH||localStorage.getItem('estudio')===PIN_HASH){try{localStorage.setItem('estudio',PIN_HASH)}catch(e){}$('#lock').hidden=true;$('#app').hidden=false}else $('#pinErr').textContent='Clave incorrecta'}
 const $=s=>document.querySelector(s);
 $('#enter').onclick=enter;$('#pin').addEventListener('keydown',e=>e.key==='Enter'&&enter());
 try{if(localStorage.getItem('estudio')===PIN_HASH){$('#lock').hidden=true;$('#app').hidden=false}}catch(e){}
@@ -152,12 +158,12 @@ let prevSrc=null;$('#prevMus').onclick=()=>{if(!S.mus)return;if(prevSrc){prevSrc
 $('#bal').oninput=e=>{const b=+e.target.value;$('#vBal').textContent=b===0?'Equilibrado':(b>0?'Más voz +'+b:'Más música +'+(-b));S.mix=null};
 
 /* --- procesado de voz (siempre la misma cadena = mismo sonido) --- */
-function deBreath(d){const N=Math.round(SR*.02),fr=Math.floor(d.length/N),rms=new Float32Array(fr),vo=new Uint8Array(fr);
+function deBreath(d,fuerte){const N=Math.round(SR*.02),fr=Math.floor(d.length/N),rms=new Float32Array(fr),vo=new Uint8Array(fr);
  for(let k=0;k<fr;k++){const o=k*N;let s=0;for(let i=0;i<N;i++){const x=d[o+i];s+=x*x;}rms[k]=Math.sqrt(s/N);let best=0;const e0=s+1e-9;
   for(let lag=Math.floor(SR/500);lag<=Math.floor(SR/70);lag+=2){let c=0,e1=0;for(let i=0;i<N;i++){const a=d[o+i],b=d[o+i+lag]||0;c+=a*b;e1+=b*b;}const r=c/Math.sqrt(e0*(e1+1e-9));if(r>best)best=r;}vo[k]=best>.55?1:0;}
  const sp=[...rms].filter((_,k)=>vo[k]).sort((a,b)=>a-b),speech=sp.length?sp[Math.floor(sp.length*.5)]:0;if(!speech)return d;const lo=[...rms].sort((a,b)=>a-b)[Math.floor(fr*.05)]||0;
- const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*.45&&rms[k]>lo*1.6)?1:0;const g=new Float32Array(fr).fill(1);
- for(let k=0;k<fr;){if(!cand[k]){k++;continue}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=120)for(let q=k;q<j;q++)g[q]=.1;k=j}
+ const cand=new Uint8Array(fr);for(let k=0;k<fr;k++)cand[k]=(!vo[k]&&rms[k]<speech*(fuerte?.62:.45)&&rms[k]>lo*1.4)?1:0;const g=new Float32Array(fr).fill(1);
+ for(let k=0;k<fr;){if(!cand[k]){k++;continue}let j=k;while(j<fr&&cand[j])j++;if((j-k)*20>=(fuerte?80:120))for(let q=k;q<j;q++)g[q]=fuerte?.02:.1;k=j}
  let cur=1;for(let k=0;k<fr;k++){const t=g[k];for(let i=0;i<N;i++){cur+=(t-cur)*.004;d[k*N+i]*=cur}}return d}
 function gate(d){const N=1024,fr=Math.floor(d.length/N),rms=[];for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const v=d[k*N+i];s+=v*v}rms.push(Math.sqrt(s/N))}
  const so=[...rms].sort((a,b)=>a-b),fl=so[Math.floor(so.length*.1)]||0,th=fl*3+1e-4;let g=1;for(let k=0;k<fr;k++){const t=rms[k]>th?1:.08;for(let i=0;i<N;i++){g+=(t-g)*(t>g?.02:.0015);d[k*N+i]*=g}}return d}
@@ -192,10 +198,37 @@ function plateIR(ctx,sec){const n=Math.round(SR*sec),b=ctx.createBuffer(1,n,SR),
  for(let i=0;i<n;i++){const t=i/n;lp+=( (Math.random()*2-1)-lp)*.5;x[i]=lp*Math.pow(1-t,3.2)*(i<SR*.012?0:1)}return b}
 function rmsDb(d){let s=0,n=0;for(let i=0;i<d.length;i++){const v=d[i];if(Math.abs(v)>.01){s+=v*v;n++}}return 10*Math.log10(s/Math.max(1,n)+1e-12)}
 
+/* acorta las pausas largas entre frases (deja como máximo «maxP» segundos de silencio) */
+function shortPauses(d,maxP){if(!maxP)return d;const N=Math.round(SR*.01),fr=Math.floor(d.length/N),r=new Float32Array(fr);
+ for(let k=0;k<fr;k++){let s=0;for(let i=0;i<N;i++){const x=d[k*N+i];s+=x*x}r[k]=Math.sqrt(s/N)}
+ const so=[...r].sort((a,b)=>a-b),hi=so[Math.floor(fr*.85)]||0,th=Math.max(hi*.06,so[Math.floor(fr*.1)]*2,.0015);
+ const keep=Math.round(maxP*100),X=Math.round(SR*.015),parts=[];let last=0,k=0;
+ while(k<fr){if(r[k]>=th){k++;continue}let j=k;while(j<fr&&r[j]<th)j++;
+  if(k>0&&j<fr&&j-k>keep){const a=(k+Math.floor(keep/2))*N,b=(j-Math.ceil(keep/2))*N;parts.push([last,a]);last=b}k=j}
+ parts.push([last,d.length]);if(parts.length===1)return d;
+ let len=0;for(const [a,b] of parts)len+=b-a;const o=new Float32Array(len);let p=0;
+ for(let q=0;q<parts.length;q++){const [a,b]=parts[q];const seg=d.subarray(a,b);
+  if(q>0){for(let i=0;i<X&&i<seg.length;i++){const t=i/X;o[p-X+i]=o[p-X+i]*(1-t)+seg[i]*t}o.set(seg.subarray(Math.min(X,seg.length)),p);p+=seg.length-Math.min(X,seg.length)}
+  else{o.set(seg,p);p+=seg.length}}
+ return o.subarray(0,p)}
+/* autotune y tono en el servidor de la radio */
+const TUNE_URL='https://radio.ondasonika.com:9443/api/tune';
+function wavMono16(d){const n=d.length,b=new ArrayBuffer(44+n*2),v=new DataView(b);let o=0;const w=s=>{for(const c of s)v.setUint8(o++,c.charCodeAt(0))};
+ w('RIFF');v.setUint32(o,36+n*2,true);o+=4;w('WAVEfmt ');v.setUint32(o,16,true);o+=4;v.setUint16(o,1,true);o+=2;v.setUint16(o,1,true);o+=2;v.setUint32(o,SR,true);o+=4;v.setUint32(o,SR*2,true);o+=4;v.setUint16(o,2,true);o+=2;v.setUint16(o,16,true);o+=2;w('data');v.setUint32(o,n*2,true);o+=4;
+ for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,d[i]));v.setInt16(o,x<0?x*32768:x*32767,true);o+=2}return new Blob([b],{type:'audio/wav'})}
+async function serverTune(v){const f=[0,.4,.7,1][+$('#at').value],t=+$('#tn').value;if(!f&&!t)return v;
+ $('#busy').textContent=f?'Aplicando autotune en el servidor… (puede tardar 20-40 s)':'Cambiando el tono en el servidor…';
+ let pin='';try{pin=localStorage.getItem('estudioPin')||''}catch(e){}
+ const r=await fetch(TUNE_URL+'?fuerza='+f+'&tono='+t,{method:'POST',headers:{'Content-Type':'audio/wav','X-Estudio':pin},body:wavMono16(v)});
+ $('#busy').textContent='Procesando…';
+ if(!r.ok)throw new Error('el servidor no ha podido hacer el autotune ('+r.status+')');
+ const b=await decode(await r.arrayBuffer());return resample(mono(b),b.sampleRate,SR)}
 async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);{const a=Math.round(SR* +$('#ci').value),b=Math.round(SR* +$('#cf').value);if(v.length>a+b+SR*.5)v=v.slice(a,v.length-b);}const clean=$('#oClean').checked,nr=+$('#nr').value,fx=+$('#fx').value,rv=+$('#rv').value;
  v=clean?cutEdges(v):trim(v);
  if(clean)v=denoise(v,nr);
- if($('#oBreath').checked)v=deBreath(v);if(clean)v=gate(v);
+ if($('#oBreath').checked)v=deBreath(v,+$('#br').value===2);if(clean)v=gate(v);
+ v=shortPauses(v,[0,.6,.4,.25][+$('#ps').value]);
+ v=await serverTune(v);
  const ctx=new OfflineAudioContext(1,v.length+Math.round(SR*(rv?1.2:0)),SR),b=ctx.createBuffer(1,v.length,SR);b.getChannelData(0).set(v);const s=ctx.createBufferSource();s.buffer=b;let n=s;
  const f=(type,fr,g,q)=>{const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=fr;if(g!=null)x.gain.value=g;if(q)x.Q.value=q;n.connect(x);n=x};
  f('highpass',85);
@@ -217,9 +250,10 @@ async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);{c
  // volumen fijo: misma sonoridad en todas las cuñas
  const k=Math.pow(10,(-17-rmsDb(d))/20);let pk=0;for(let i=0;i<d.length;i++){d[i]*=k;pk=Math.max(pk,Math.abs(d[i]))}if(pk>.89)for(let i=0;i<d.length;i++)d[i]*=.89/pk;return d}
 
-const NAMES={nr:['Apagada','Suave','Fuerte','Máxima'],fx:['Natural','Radio','Locutor','Máximo'],rv:['Sin eco','Poco','Medio','Mucho']};
+['tn','vol'].forEach(id=>{const u=()=>{const x=+$('#'+id).value;$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=x===0?(id==='tn'?'Natural':'Normal'):(x>0?'+':'')+x+(id==='tn'?' (más agudo)':' dB').replace('+-','-')+(id==='tn'&&x<0?'':'');if(id==='tn'&&x<0)$('#vTn').textContent=x+' (más grave)'};$('#'+id).addEventListener('input',u);u()});
+const NAMES={br:['','Normal','Fuerte (quita también suspiros)'],ps:['No','Un poco','Bastante','Al máximo'],at:['Sin autotune','Suave','Medio','Fuerte (efecto cantante)'],nr:['Apagada','Suave','Fuerte','Máxima'],fx:['Natural','Radio','Locutor','Máximo'],rv:['Sin eco','Poco','Medio','Mucho']};
 ['ci','cf'].forEach(id=>{const u=()=>$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=(+$('#'+id).value).toFixed(2)+' s';$('#'+id).addEventListener('input',u);u()});
-['nr','fx','rv'].forEach(id=>{const u=()=>$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=NAMES[id][+$('#'+id).value];$('#'+id).addEventListener('input',u);u()});
+['br','ps','at','nr','fx','rv'].forEach(id=>{const u=()=>$('#v'+id[0].toUpperCase()+id.slice(1)).textContent=NAMES[id][+$('#'+id).value];$('#'+id).addEventListener('input',u);u()});
 
 $('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#prev').hidden=true;$('#stale').hidden=true;await new Promise(r=>setTimeout(r,30));
  try{const v=await processVoice(),vd=v.length/SR,noMus=$('#oNoMus').checked||!S.mus;
@@ -234,6 +268,8 @@ $('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#pr
    G.setValueAtTime(lo,pre+vd);G.linearRampToValueAtTime(hi,pre+vd+.7);const fo=Math.min(2.5,post);G.setValueAtTime(hi,total-fo);G.linearRampToValueAtTime(0,total);
    ms.start(0,S.start);}
   const out=await ctx.startRendering();
+  // volumen final: sube o baja y comprime suave para que no sature
+  {const gv=Math.pow(10,+$('#vol').value/20);if(gv!==1)for(let c=0;c<2;c++){const x=out.getChannelData(c);for(let i=0;i<x.length;i++){const y=x[i]*gv;x[i]=gv>1?Math.tanh(y*1.2)/1.2:y}}}
   // limitador final
   let pk=0;for(let c=0;c<2;c++){for(const x of out.getChannelData(c))pk=Math.max(pk,Math.abs(x))}const k=pk>.93?.93/pk:1;
   const L=out.getChannelData(0),R=out.getChannelData(1);if(k<1)for(let i=0;i<L.length;i++){L[i]*=k;R[i]*=k}
