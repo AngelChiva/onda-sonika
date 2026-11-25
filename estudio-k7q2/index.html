@@ -219,10 +219,9 @@ function wavMono16(d){const n=d.length,b=new ArrayBuffer(44+n*2),v=new DataView(
 async function serverTune(v){const f=[0,.4,.7,1][+$('#at').value],t=+$('#tn').value;if(!f&&!t)return v;
  $('#busy').textContent=f?'Aplicando autotune en el servidor… (puede tardar 20-40 s)':'Cambiando el tono en el servidor…';
  let pin='';try{pin=localStorage.getItem('estudioPin')||''}catch(e){}
- const r=await fetch(TUNE_URL+'?fuerza='+f+'&tono='+t,{method:'POST',headers:{'Content-Type':'audio/wav','X-Estudio':pin},body:wavMono16(v)});
- $('#busy').textContent='Procesando…';
- if(!r.ok)throw new Error('el servidor no ha podido hacer el autotune ('+r.status+')');
- const b=await decode(await r.arrayBuffer());return resample(mono(b),b.sampleRate,SR)}
+ try{const r=await fetch(TUNE_URL+'?fuerza='+f+'&tono='+t,{method:'POST',headers:{'Content-Type':'audio/wav','X-Estudio':pin},body:wavMono16(v)});
+  if(!r.ok)throw new Error(r.status);const b=await decode(await r.arrayBuffer());$('#busy').textContent='Procesando…';S.aviso='';return resample(mono(b),b.sampleRate,SR)}
+ catch(e){$('#busy').textContent='Procesando…';S.aviso=' ⚠️ El autotune/tono no se ha podido aplicar ahora (servidor no disponible): la cuña sale sin él.';return v}}
 async function processVoice(){let v=resample(mono(S.voz),S.voz.sampleRate,SR);{const a=Math.round(SR* +$('#ci').value),b=Math.round(SR* +$('#cf').value);if(v.length>a+b+SR*.5)v=v.slice(a,v.length-b);}const clean=$('#oClean').checked,nr=+$('#nr').value,fx=+$('#fx').value,rv=+$('#rv').value;
  v=clean?cutEdges(v):trim(v);
  if(clean)v=denoise(v,nr);
@@ -277,7 +276,7 @@ $('#go').onclick=async()=>{$('#busy').hidden=false;$('#go').disabled=true;$('#pr
   const wav=toWav(L,R),mp3=toMp3(L,R);$('#out').src=URL.createObjectURL(wav);$('#prev').hidden=false;$('#prevState').textContent='Sonando…';$('#out').play().catch(()=>{$('#prevState').textContent='Pulsa ▶ para escucharla'});$('#prev').scrollIntoView({behavior:'smooth',block:'center'});
   $('#dlWav').href=URL.createObjectURL(wav);$('#dlWav').download=nm+'.wav';
   if(mp3){$('#dlMp3').href=URL.createObjectURL(mp3);$('#dlMp3').download=nm+'.mp3';$('#dlMp3').hidden=false}else $('#dlMp3').hidden=true;
-  $('#dl').hidden=false;$('#stats').textContent=`Duración: ${total.toFixed(1)} s (voz ${vd.toFixed(1)} s${noMus?'':` + ${pre} s antes + ${post} s después`}).`;}
+  $('#dl').hidden=false;$('#stats').textContent=(S.aviso||'')+` Duración: ${total.toFixed(1)} s (voz ${vd.toFixed(1)} s${noMus?'':` + ${pre} s antes + ${post} s después`}).`;}
  catch(e){console.error(e);alert('No se ha podido crear la cuña: '+e.message)}
  $('#busy').hidden=true;$('#go').disabled=false};
 
